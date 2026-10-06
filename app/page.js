@@ -34,7 +34,7 @@ export default function HomePage() {
       .then((d) => {
         if (d.success) setPlatforms(d.platforms || []);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   return (
@@ -48,7 +48,7 @@ export default function HomePage() {
             <a href="#games" className="hover:text-amber-600 transition">Game Platforms</a>
             <a href="#how-it-works" className="hover:text-amber-600 transition">How It Works</a>
             <a href="#security" className="hover:text-amber-600 transition">Security &amp; Cashout</a>
-            <Link href="/admin/login" className="text-xs text-slate-400 hover:text-slate-600 font-medium">Admin Portal</Link>
+            {/* <Link href="/admin/login" className="text-xs text-slate-400 hover:text-slate-600 font-medium">Admin Portal</Link> */}
           </nav>
 
           <div className="flex items-center gap-3">
