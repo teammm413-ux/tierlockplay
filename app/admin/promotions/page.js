@@ -69,24 +69,24 @@ export default function AdminPromotionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#06080e] text-white flex">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex font-sans">
       <AdminSidebar />
 
       <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto space-y-6 overflow-y-auto">
         {/* Header */}
-        <div className="pb-4 border-b border-gray-800">
-          <h1 className="text-2xl font-black text-white uppercase tracking-wider flex items-center gap-2">
-            <Megaphone className="w-6 h-6 text-amber-400" />
+        <div className="pb-4 border-b border-slate-200">
+          <h1 className="text-2xl font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Megaphone className="w-6 h-6 text-amber-500" />
             <span>Promotional Campaigns Engine</span>
           </h1>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Segment by audience (Subscribers / Unsubscribers / Both) and choose delivery channels (Chrome Web Notifications / SMTP Email / Both).
           </p>
         </div>
 
         {notice.text && (
-          <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2 ${
-            notice.isError ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+          <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2 shadow-sm ${
+            notice.isError ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
           }`}>
             {notice.isError ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
             <span>{notice.text}</span>
@@ -95,38 +95,38 @@ export default function AdminPromotionsPage() {
 
         {/* Audience Overview Badges */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-[#0e131d] border border-gray-800 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white border border-slate-200 flex items-center justify-between shadow-sm">
             <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase">Subscribers Pool</div>
-              <div className="text-xl font-black text-amber-400 mt-1">
+              <div className="text-[10px] font-bold text-slate-500 uppercase">Subscribers Pool</div>
+              <div className="text-xl font-black text-amber-600 mt-1">
                 {stats.totalSubscribers} Players
               </div>
             </div>
-            <span className="text-[10px] bg-amber-500/10 text-amber-300 font-bold px-2 py-0.5 rounded">
+            <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">
               OPTED IN
             </span>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#0e131d] border border-gray-800 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white border border-slate-200 flex items-center justify-between shadow-sm">
             <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase">Unsubscribers Pool</div>
-              <div className="text-xl font-black text-gray-300 mt-1">
+              <div className="text-[10px] font-bold text-slate-500 uppercase">Unsubscribers Pool</div>
+              <div className="text-xl font-black text-slate-700 mt-1">
                 {stats.totalUnsubscribers} Players
               </div>
             </div>
-            <span className="text-[10px] bg-gray-800 text-gray-400 font-bold px-2 py-0.5 rounded">
+            <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded">
               UNSUBSCRIBED
             </span>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#0e131d] border border-gray-800 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white border border-slate-200 flex items-center justify-between shadow-sm">
             <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase">Total Reach (Both)</div>
-              <div className="text-xl font-black text-emerald-400 mt-1">
+              <div className="text-[10px] font-bold text-slate-500 uppercase">Total Reach (Both)</div>
+              <div className="text-xl font-black text-emerald-600 mt-1">
                 {stats.totalPlayers} Players
               </div>
             </div>
-            <span className="text-[10px] bg-emerald-500/10 text-emerald-300 font-bold px-2 py-0.5 rounded">
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
               100% AUDIENCE
             </span>
           </div>
@@ -134,16 +134,16 @@ export default function AdminPromotionsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Create Campaign Form */}
-          <div className="lg:col-span-2 bg-[#0e131d] border border-gray-800 rounded-2xl p-6 shadow space-y-5">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
               <span>Compose Campaign Blast</span>
             </h2>
 
             <form onSubmit={handleDispatch} className="space-y-4 text-xs">
               {/* Campaign Title */}
               <div>
-                <label className="text-gray-300 font-bold uppercase tracking-wider block mb-1.5">
+                <label className="text-slate-700 font-bold uppercase tracking-wider block mb-1.5">
                   Campaign Title
                 </label>
                 <input
@@ -152,14 +152,14 @@ export default function AdminPromotionsPage() {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. VIP Friday Jackpot Reload!"
-                  className="w-full bg-[#161d2c] border border-gray-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white placeholder-slate-400 transition"
                 />
               </div>
 
               {/* Promo Code & Bonus Amount */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-gray-300 font-bold uppercase tracking-wider block mb-1.5">
+                  <label className="text-slate-700 font-bold uppercase tracking-wider block mb-1.5">
                     Promo Code (Optional)
                   </label>
                   <input
@@ -167,11 +167,11 @@ export default function AdminPromotionsPage() {
                     value={formData.promoCode}
                     onChange={(e) => setFormData({ ...formData, promoCode: e.target.value })}
                     placeholder="e.g. GOLD777"
-                    className="w-full bg-[#161d2c] border border-gray-700 text-amber-400 font-mono font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 uppercase"
+                    className="w-full bg-slate-50 border border-slate-200 text-amber-600 font-mono font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white uppercase placeholder-slate-400 transition"
                   />
                 </div>
                 <div>
-                  <label className="text-gray-300 font-bold uppercase tracking-wider block mb-1.5">
+                  <label className="text-slate-700 font-bold uppercase tracking-wider block mb-1.5">
                     Bonus Value ($ Freeplay)
                   </label>
                   <input
@@ -181,14 +181,14 @@ export default function AdminPromotionsPage() {
                     value={formData.bonusAmount}
                     onChange={(e) => setFormData({ ...formData, bonusAmount: e.target.value })}
                     placeholder="10.00"
-                    className="w-full bg-[#161d2c] border border-gray-700 text-emerald-400 font-mono font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 border border-slate-200 text-emerald-600 font-mono font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition"
                   />
                 </div>
               </div>
 
               {/* Promo Message */}
               <div>
-                <label className="text-gray-300 font-bold uppercase tracking-wider block mb-1.5">
+                <label className="text-slate-700 font-bold uppercase tracking-wider block mb-1.5">
                   Promotional Message Body
                 </label>
                 <textarea
@@ -196,13 +196,13 @@ export default function AdminPromotionsPage() {
                   required
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full bg-[#161d2c] border border-gray-700 text-white text-xs p-3.5 rounded-xl focus:outline-none focus:border-amber-500 leading-relaxed"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-xs p-3.5 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white leading-relaxed transition"
                 />
               </div>
 
               {/* 1. Target Audience Segmentation (Requirement) */}
               <div>
-                <label className="text-gray-300 font-bold uppercase tracking-wider block mb-2">
+                <label className="text-slate-700 font-bold uppercase tracking-wider block mb-2">
                   1. Target Audience
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -219,12 +219,12 @@ export default function AdminPromotionsPage() {
                         onClick={() => setFormData({ ...formData, targetAudience: a.id })}
                         className={`p-3 rounded-xl border text-left transition ${
                           isSelected
-                            ? 'bg-amber-500/15 border-amber-500 text-white shadow-sm'
-                            : 'bg-[#141b27] border-gray-800 text-gray-400 hover:border-gray-700'
+                            ? 'bg-amber-50 border-amber-500 text-slate-900 shadow-sm'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-100'
                         }`}
                       >
                         <div className="font-bold text-xs">{a.label}</div>
-                        <div className="text-[10px] text-amber-400/80 font-mono mt-0.5">{a.sub}</div>
+                        <div className="text-[10px] text-amber-600 font-mono mt-0.5">{a.sub}</div>
                       </button>
                     );
                   })}
@@ -233,7 +233,7 @@ export default function AdminPromotionsPage() {
 
               {/* 2. Delivery Channel Segmentation (Requirement) */}
               <div>
-                <label className="text-gray-300 font-bold uppercase tracking-wider block mb-2">
+                <label className="text-slate-700 font-bold uppercase tracking-wider block mb-2">
                   2. Delivery Channel
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -251,15 +251,15 @@ export default function AdminPromotionsPage() {
                         onClick={() => setFormData({ ...formData, deliveryChannel: c.id })}
                         className={`p-3 rounded-xl border text-left transition ${
                           isSelected
-                            ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-sm'
-                            : 'bg-[#141b27] border-gray-800 text-gray-400 hover:border-gray-700'
+                            ? 'bg-emerald-50 border-emerald-500 text-slate-900 shadow-sm'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-100'
                         }`}
                       >
                         <div className="flex items-center gap-1.5 font-bold text-xs">
-                          <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-emerald-400' : 'text-gray-500'}`} />
+                          <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
                           <span>{c.label}</span>
                         </div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">{c.sub}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">{c.sub}</div>
                       </button>
                     );
                   })}
@@ -270,7 +270,7 @@ export default function AdminPromotionsPage() {
               <button
                 type="submit"
                 disabled={isDispatching}
-                className="w-full btn-gold py-4 rounded-xl text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(245,158,11,0.35)] disabled:opacity-50 mt-4"
+                className="w-full btn-gold py-4 rounded-xl text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md disabled:opacity-50 mt-4"
               >
                 <Send className="w-4 h-4" />
                 <span>{isDispatching ? 'Dispatching Broadcast...' : 'Dispatch Promotional Campaign'}</span>
@@ -279,31 +279,31 @@ export default function AdminPromotionsPage() {
           </div>
 
           {/* Past Campaigns Log */}
-          <div className="bg-[#0e131d] border border-gray-800 rounded-2xl p-5 shadow flex flex-col justify-between">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
             <div>
-              <h2 className="text-xs font-bold text-white uppercase tracking-wider mb-4 pb-2 border-b border-gray-800">
+              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
                 Campaign History ({campaigns.length})
               </h2>
 
               <div className="space-y-3 max-h-[500px] overflow-y-auto">
                 {campaigns.length === 0 ? (
-                  <div className="text-center py-12 text-xs text-gray-500">
+                  <div className="text-center py-12 text-xs text-slate-400">
                     No campaigns dispatched yet. Use the form to launch your first blast.
                   </div>
                 ) : (
                   campaigns.map((c) => (
-                    <div key={c.id} className="p-3 rounded-xl bg-[#141b27] border border-gray-800 space-y-1.5">
-                      <div className="text-xs font-bold text-white line-clamp-1">{c.title}</div>
-                      <p className="text-[11px] text-gray-400 line-clamp-2">{c.message}</p>
+                    <div key={c.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                      <div className="text-xs font-bold text-slate-900 line-clamp-1">{c.title}</div>
+                      <p className="text-[11px] text-slate-600 line-clamp-2">{c.message}</p>
                       <div className="pt-1 flex items-center justify-between text-[10px]">
-                        <span className="font-mono text-amber-400 font-bold">
+                        <span className="font-mono text-amber-600 font-bold">
                           {c.promo_code ? `Code: ${c.promo_code}` : 'No code'}
                         </span>
-                        <span className="bg-emerald-500/10 text-emerald-400 px-1.5 py-0.2 rounded font-bold">
+                        <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
                           {c.total_sent} Sent
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-[9px] text-gray-500 pt-1 border-t border-gray-800/80">
+                      <div className="flex items-center justify-between text-[9px] text-slate-400 pt-1 border-t border-slate-200">
                         <span className="capitalize">{c.target_audience} • {c.delivery_channel}</span>
                         <span>{c.created_at ? c.created_at.substring(0, 16) : ''}</span>
                       </div>

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 
-export default function Logo({ size = 'medium', href = '/', showText = true }) {
+export default function Logo({ size = 'medium', href = '/', showText = true, theme = 'dark' }) {
   const sizeMap = {
     small: { icon: 28, text: 'text-lg', sub: 'text-[9px]' },
     medium: { icon: 38, text: 'text-2xl', sub: 'text-[10px]' },
@@ -11,6 +11,7 @@ export default function Logo({ size = 'medium', href = '/', showText = true }) {
   };
 
   const current = sizeMap[size] || sizeMap.medium;
+  const isLight = theme === 'light';
 
   const content = (
     <div className="flex items-center gap-3 cursor-pointer select-none group">
@@ -41,7 +42,7 @@ export default function Logo({ size = 'medium', href = '/', showText = true }) {
           {/* Outer Shield Border */}
           <path
             d="M50 5 L88 22 V52 C88 74 50 95 50 95 C50 95 12 74 12 52 V22 L50 5 Z"
-            fill="#090d16"
+            fill={isLight ? '#1e293b' : '#090d16'}
             stroke="url(#goldGrad)"
             strokeWidth="4"
           />
@@ -84,7 +85,9 @@ export default function Logo({ size = 'medium', href = '/', showText = true }) {
                 fontFamily: 'Outfit, sans-serif',
                 fontWeight: 900,
                 letterSpacing: '1px',
-                background: 'linear-gradient(135deg, #ffffff 0%, #fbbf24 60%, #f59e0b 100%)',
+                background: isLight
+                  ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #b45309 100%)'
+                  : 'linear-gradient(135deg, #ffffff 0%, #fbbf24 60%, #f59e0b 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 textTransform: 'uppercase',
@@ -93,17 +96,28 @@ export default function Logo({ size = 'medium', href = '/', showText = true }) {
             >
               VEGAS<span style={{ color: '#f59e0b', WebkitTextFillColor: '#f59e0b', marginLeft: '4px' }}>VAULT</span>
             </span>
-            <span className="badge-tag" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)', padding: '1px 5px', fontSize: '9px', fontWeight: 800 }}>
+            <span
+              className="badge-tag"
+              style={{
+                background: isLight ? '#fef3c7' : 'rgba(245,158,11,0.15)',
+                color: isLight ? '#92400e' : '#fbbf24',
+                border: isLight ? '1px solid #fde68a' : '1px solid rgba(245,158,11,0.3)',
+                padding: '1px 5px',
+                fontSize: '9px',
+                fontWeight: 800,
+                borderRadius: '4px'
+              }}
+            >
               USA
             </span>
           </div>
           <span
             style={{
               fontSize: '10px',
-              color: '#94a3b8',
+              color: isLight ? '#64748b' : '#94a3b8',
               letterSpacing: '2.5px',
               textTransform: 'uppercase',
-              fontWeight: 600,
+              fontWeight: 700,
               marginTop: '3px',
             }}
           >

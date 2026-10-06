@@ -242,19 +242,15 @@ export default function GamePlatformsPage() {
                           {/* 2. Logo */}
                           <td className="py-4 px-6">
                             <div className="w-20 h-11 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 flex items-center justify-center shadow-sm">
-                              {isImageLogo ? (
-                                <img
-                                  src={platform.logo_url}
-                                  alt={platform.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = '/images/games/juwa.jpg';
-                                  }}
-                                />
-                              ) : (
-                                <span className="text-xl">{platform.logo_url || '🎰'}</span>
-                              )}
+                              <img
+                                src={isImageLogo ? platform.logo_url : `/images/games/${platform.slug || 'juwa'}.jpg`}
+                                alt={platform.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = '/images/games/juwa.jpg';
+                                }}
+                              />
                             </div>
                           </td>
 
