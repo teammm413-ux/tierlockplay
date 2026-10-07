@@ -259,18 +259,18 @@ export default function DepositPage() {
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-amber-400" />
                     <span className="text-xs font-bold tracking-wider uppercase text-amber-400">
-                      Revsol Payment Gateway
+                      Secure Instant Checkout
                     </span>
                   </div>
                   <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-amber-300">
-                    Merchant ID: 2026103966
+                    256-Bit SSL Encrypted
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-white">Complete Payment Online via Revsol</h3>
+                  <h3 className="text-base font-bold text-white">Complete Payment Online</h3>
                   <p className="text-xs text-slate-300 mt-1">
-                    Click the button below to complete checkout on Revsol hosted gateway, or use <strong>Simulate Webhook</strong> for instant sandbox testing.
+                    Click the button below to complete checkout on secure hosted gateway, or use <strong>Simulate Webhook</strong> for instant sandbox testing.
                   </p>
                 </div>
 
@@ -400,11 +400,11 @@ export default function DepositPage() {
                   </label>
                   <div className="flex flex-wrap gap-2.5">
                     {[
-                      { name: 'Cash App', productId: '272835', icon: '💵', badge: 'Popular' },
-                      { name: 'Google & Apple Pay', productId: '49794', icon: '📱', badge: '1-Click' },
-                      { name: 'PayPal', productId: '373683', icon: '🅿️', badge: 'Secured' },
-                      { name: 'Chime', productId: '314026', icon: '🏦', badge: 'Direct' },
-                      { name: 'BTC Lightning', productId: '93593', icon: '⚡', badge: 'Crypto' },
+                      { name: 'Cash App', icon: '💵', badge: 'Popular' },
+                      { name: 'Google & Apple Pay', icon: '📱', badge: '1-Click' },
+                      { name: 'PayPal', icon: '🅿️', badge: 'Secured' },
+                      { name: 'Chime', icon: '🏦', badge: 'Direct' },
+                      { name: 'BTC Lightning', icon: '⚡', badge: 'Crypto' },
                     ].map((channel) => {
                       const isActive = payUsing === channel.name;
                       return (
@@ -420,10 +420,10 @@ export default function DepositPage() {
                         >
                           <span>{channel.icon}</span>
                           <span>{channel.name}</span>
-                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                             isActive ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-100 text-slate-500'
                           }`}>
-                            #{channel.productId}
+                            {channel.badge}
                           </span>
                         </button>
                       );

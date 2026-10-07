@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase, User, DepositRequest } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
-import { initiateTapTapUpPayment } from '@/lib/taptapup';
+import { initiateTapTapUpPayment, getChannelProductId } from '@/lib/taptapup';
 
 function generateOrderNo() {
   // 12-digit format like in screenshot: 141865521058
@@ -37,19 +37,19 @@ export async function POST(request) {
     const balanceBefore = user.wallet_balance || 0;
     const balanceAfter = balanceBefore;
 
-    // Call Revsol payment gateway to get secure hosted checkout redirect URL
+    // Call payment gateway to get secure hosted checkout redirect URL
     let gatewayData = null;
     let gatewayError = null;
 
     try {
       gatewayData = await initiateTapTapUpPayment({
         amount: paid,
-        email: user.email || 'Revsolc@gmail.com',
+        email: user.email || process.env.REVSOL_VENDOR_EMAIL || '',
         merchantReference: orderNo,
         paymentMethod: paymentMethod || 'Cash App',
       });
     } catch (err) {
-      console.warn('[Revsol Gateway Warning]', err.message);
+      console.warn('[Payment Gateway Warning]', err.message);
       gatewayError = err.message;
     }
 
@@ -65,8 +65,8 @@ export async function POST(request) {
       wallet_balance_before: balanceBefore,
       wallet_balance_after: balanceAfter,
       transaction_proof: senderCashtag || '',
-      payment_gateway: 'Revsol',
-      product_id: gatewayData?.productId || 272835,
+      payment_gateway: process.env.REVSOL_MERCHANT_NAME || 'Payment Gateway',
+      product_id: gatewayData?.productId || getChannelProductId(paymentMethod) || 0,
       payment_token: gatewayData?.token || '',
       redirect_url: gatewayData?.redirectUrl || '',
       created_at: new Date()
