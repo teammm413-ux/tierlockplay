@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, DepositRequest } from '@/lib/mongodb';
+import { connectToDatabase, DepositRequest, expireStaleDeposits } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +12,7 @@ export async function GET(request) {
     }
 
     await connectToDatabase();
+    await expireStaleDeposits();
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');

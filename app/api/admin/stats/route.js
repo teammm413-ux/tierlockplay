@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, User, DepositRequest, WithdrawalRequest, GameTransaction, ChatMessage, Admin } from '@/lib/mongodb';
+import { connectToDatabase, User, DepositRequest, WithdrawalRequest, GameTransaction, ChatMessage, Admin, expireStaleDeposits } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +21,8 @@ export async function GET(request) {
     }
 
     await connectToDatabase();
+    // Auto-expire any stale Created deposits older than 30 minutes
+    await expireStaleDeposits();
 
     const totalUsers = await User.countDocuments({});
     const activeUsers = await User.countDocuments({ account_status: 'Active' });
@@ -32,13 +34,16 @@ export async function GET(request) {
     ]);
     const totalDeposited = depApprovedAgg.length > 0 ? depApprovedAgg[0].sum : 0;
 
-    // Pending deposits
-    const pendingDepCount = await DepositRequest.countDocuments({ status: { $in: ['Pending', 'Created'] } });
+    // Pending deposits (awaiting admin action or confirmation)
+    const pendingDepCount = await DepositRequest.countDocuments({ status: 'Pending' });
     const pendingDepAgg = await DepositRequest.aggregate([
-      { $match: { status: { $in: ['Pending', 'Created'] } } },
+      { $match: { status: 'Pending' } },
       { $group: { _id: null, sum: { $sum: '$paid_amount' } } }
     ]);
     const pendingDepositsSum = pendingDepAgg.length > 0 ? pendingDepAgg[0].sum : 0;
+
+    const expiredDepCount = await DepositRequest.countDocuments({ status: 'Expired' });
+    const createdDepCount = await DepositRequest.countDocuments({ status: 'Created' });
 
     // Withdrawals approved sum
     const withApprovedAgg = await WithdrawalRequest.aggregate([
@@ -98,6 +103,8 @@ export async function GET(request) {
         totalDeposited: parseFloat(totalDeposited.toFixed(2)),
         pendingDepositsCount: pendingDepCount,
         pendingDepositsSum: parseFloat(pendingDepositsSum.toFixed(2)),
+        expiredDepositsCount: expiredDepCount,
+        createdDepositsCount: createdDepCount,
         totalWithdrawn: parseFloat(totalWithdrawn.toFixed(2)),
         pendingWithdrawalsCount: pendingWithCount,
         pendingWithdrawalsSum: parseFloat(pendingWithdrawalsSum.toFixed(2)),

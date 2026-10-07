@@ -17,7 +17,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Clock
 } from 'lucide-react';
 
 const DENOMINATIONS = [
@@ -157,6 +158,8 @@ export default function DepositPage() {
           redirectUrl: data.redirectUrl || null,
           token: data.token || null,
           paymentGateway: data.paymentGateway || 'TapTapUp',
+          status: data.status || 'Created',
+          expiresAt: data.expiresAt || null,
         });
         setShowConfirmModal(false);
         refreshUserData();
@@ -246,9 +249,14 @@ export default function DepositPage() {
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     Approved & Credited
                   </span>
+                ) : createdOrder.status === 'Expired' ? (
+                  <span className="px-3.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                    Expired (Unpaid)
+                  </span>
                 ) : (
-                  <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                    Awaiting Payment
+                  <span className="px-3.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Awaiting Payment (30m)
                   </span>
                 )}
               </div>
@@ -367,8 +375,11 @@ export default function DepositPage() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
-                <strong>Instant Credit:</strong> Once you complete payment on the hosted TapTapUp page, the gateway webhook will automatically credit your wallet balance in real-time.
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed flex items-start gap-2.5">
+                <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <strong>30-Minute Payment Window:</strong> This deposit order is valid for <strong>30 minutes</strong>. Unpaid or abandoned checkouts expire automatically. Once you complete payment on the checkout page, the gateway webhook will credit your balance instantly in real-time.
+                </div>
               </div>
 
               <div className="flex gap-4">

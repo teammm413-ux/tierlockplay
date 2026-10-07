@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, DepositRequest, User, ChromeNotification } from '@/lib/mongodb';
+import { connectToDatabase, DepositRequest, User, ChromeNotification, expireStaleDeposits } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +12,7 @@ export async function GET(request) {
     }
 
     await connectToDatabase();
+    await expireStaleDeposits();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'All';
     const query = searchParams.get('q') || '';
@@ -49,6 +50,7 @@ export async function GET(request) {
       gateway_order_id: d.gateway_order_id || '',
       redirect_url: d.redirect_url || '',
       created_at: d.created_at,
+      expires_at: d.expires_at || null,
       processed_at: d.processed_at || '',
     }));
 

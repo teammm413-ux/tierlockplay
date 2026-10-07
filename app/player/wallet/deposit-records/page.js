@@ -154,6 +154,7 @@ export default function DepositRecordsPage() {
                   <option value="Pending">Pending</option>
                   <option value="Approved">Approved</option>
                   <option value="Rejected">Rejected</option>
+                  <option value="Expired">Expired</option>
                 </select>
               </div>
 
@@ -219,6 +220,7 @@ export default function DepositRecordsPage() {
                       const isApproved = r.status === 'Approved';
                       const isPending = r.status === 'Pending';
                       const isRejected = r.status === 'Rejected';
+                      const isExpired = r.status === 'Expired';
 
                       return (
                         <tr key={r.id} className="hover:bg-slate-50/50 transition">
@@ -255,6 +257,8 @@ export default function DepositRecordsPage() {
                                   ? 'bg-emerald-600'
                                   : isRejected
                                   ? 'bg-red-500'
+                                  : isExpired
+                                  ? 'bg-slate-400'
                                   : isCreated
                                   ? 'bg-amber-600'
                                   : 'bg-blue-600'

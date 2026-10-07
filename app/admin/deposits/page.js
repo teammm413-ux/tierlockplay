@@ -82,7 +82,7 @@ export default function AdminDepositsPage() {
         {/* Filters & Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
+            {['All', 'Pending', 'Approved', 'Rejected', 'Expired'].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -181,6 +181,10 @@ export default function AdminDepositsPage() {
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                               : d.status === 'Rejected'
                               ? 'bg-red-100 text-red-800 border border-red-200'
+                              : d.status === 'Expired'
+                              ? 'bg-slate-100 text-slate-600 border border-slate-300'
+                              : d.status === 'Created'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
                               : 'bg-amber-100 text-amber-800 border border-amber-200'
                           }`}
                         >
@@ -206,6 +210,10 @@ export default function AdminDepositsPage() {
                               Reject
                             </button>
                           </div>
+                        ) : d.status === 'Expired' ? (
+                          <span className="text-slate-400 font-medium text-[11px]">Expired (Unpaid)</span>
+                        ) : d.status === 'Created' ? (
+                          <span className="text-blue-600 font-medium text-[11px]">Awaiting Payment</span>
                         ) : (
                           <span className="text-slate-400 text-[10px]">Processed</span>
                         )}

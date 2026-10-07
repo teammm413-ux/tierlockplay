@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, User, DepositRequest } from '@/lib/mongodb';
+import { connectToDatabase, User, DepositRequest, expireStaleDeposits } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 import { initiateTapTapUpPayment, getChannelProductId } from '@/lib/taptapup';
 
@@ -17,6 +17,7 @@ export async function POST(request) {
     }
 
     await connectToDatabase();
+    await expireStaleDeposits();
 
     const body = await request.json();
     const { paymentMethod, paidAmount, receivedAmount, senderCashtag } = body;
@@ -69,7 +70,8 @@ export async function POST(request) {
       product_id: gatewayData?.productId || getChannelProductId(paymentMethod) || 0,
       payment_token: gatewayData?.token || '',
       redirect_url: gatewayData?.redirectUrl || '',
-      created_at: new Date()
+      created_at: new Date(),
+      expires_at: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes payment window
     });
 
     return NextResponse.json({
@@ -85,6 +87,7 @@ export async function POST(request) {
       token: gatewayData?.token || null,
       paymentGateway: deposit.payment_gateway,
       gatewayError: gatewayError || null,
+      expiresAt: deposit.expires_at,
     });
   } catch (error) {
     console.error('[API Deposit Error]', error);

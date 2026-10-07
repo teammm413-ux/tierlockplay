@@ -39,6 +39,31 @@ export async function POST(request) {
       });
     }
 
+    if (deposit.status === 'Expired') {
+      return NextResponse.json({
+        success: false,
+        status: 'Expired',
+        message: 'This deposit order has expired (30-minute limit exceeded). Please generate a new deposit order.',
+        deposit,
+      });
+    }
+
+    const isPastExpiry = deposit.expires_at
+      ? new Date() > new Date(deposit.expires_at)
+      : (Date.now() - new Date(deposit.created_at).getTime() > 30 * 60 * 1000);
+
+    if (deposit.status === 'Created' && isPastExpiry) {
+      deposit.status = 'Expired';
+      deposit.processed_at = new Date();
+      await deposit.save();
+      return NextResponse.json({
+        success: false,
+        status: 'Expired',
+        message: 'This deposit order has expired (30-minute limit exceeded). Please generate a new deposit order.',
+        deposit,
+      });
+    }
+
     const checkToken = token || deposit.payment_token;
     if (!checkToken) {
       return NextResponse.json({
