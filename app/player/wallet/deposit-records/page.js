@@ -1,23 +1,54 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PlayerHeader from '@/components/PlayerHeader';
 import Sidebar from '@/components/Sidebar';
 import WhatsAppChat from '@/components/WhatsAppChat';
 import FreeplayModal from '@/components/FreeplayModal';
-import { Calendar, Copy, Check } from 'lucide-react';
+import {
+  Calendar,
+  Copy,
+  Check,
+  Search,
+  RotateCw,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Activity,
+  DollarSign,
+  Wallet,
+  Clock,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 
 export default function DepositRecordsPage() {
   const [user, setUser] = useState(null);
   const [records, setRecords] = useState([]);
-  const [dateFrom, setDateFrom] = useState('2026-10-01');
-  const [dateTo, setDateTo] = useState('2026-10-02');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [activePreset, setActivePreset] = useState('all');
   const [paymentMethod, setPaymentMethod] = useState('All');
   const [status, setStatus] = useState('All');
   const [orderNo, setOrderNo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  const dateFromInputRef = useRef(null);
+  const dateToInputRef = useRef(null);
+
+  // Helper to get formatted YYYY-MM-DD
+  const formatDateString = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const refreshUserData = async () => {
     try {
@@ -27,45 +58,103 @@ export default function DepositRecordsPage() {
     } catch (err) {}
   };
 
-  const fetchRecords = async () => {
-    setIsLoading(true);
+  const fetchRecords = useCallback(async (overrides = {}, silent = false) => {
+    if (!silent) setIsLoading(true);
+    else setIsRefreshing(true);
+
     try {
+      const currentFrom = overrides.dateFrom !== undefined ? overrides.dateFrom : dateFrom;
+      const currentTo = overrides.dateTo !== undefined ? overrides.dateTo : dateTo;
+      const currentMethod = overrides.paymentMethod !== undefined ? overrides.paymentMethod : paymentMethod;
+      const currentStatus = overrides.status !== undefined ? overrides.status : status;
+      const currentOrderNo = overrides.orderNo !== undefined ? overrides.orderNo : orderNo;
+
       const params = new URLSearchParams();
-      if (dateFrom) params.append('dateFrom', dateFrom);
-      if (dateTo) params.append('dateTo', dateTo);
-      if (paymentMethod !== 'All') params.append('paymentMethod', paymentMethod);
-      if (status !== 'All') params.append('status', status);
-      if (orderNo.trim()) params.append('orderNo', orderNo.trim());
+      if (currentFrom) params.append('dateFrom', currentFrom);
+      if (currentTo) params.append('dateTo', currentTo);
+      if (currentMethod !== 'All') params.append('paymentMethod', currentMethod);
+      if (currentStatus !== 'All') params.append('status', currentStatus);
+      if (currentOrderNo.trim()) params.append('orderNo', currentOrderNo.trim());
 
       const res = await fetch(`/api/wallet/deposit-records?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
         setRecords(data.records || []);
+        setLastUpdated(new Date());
       }
     } catch (err) {
-      console.error(err);
+      console.error('[Deposit Records Error]', err);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, [dateFrom, dateTo, paymentMethod, status, orderNo]);
 
+  // Initial load
   useEffect(() => {
     refreshUserData();
-    fetchRecords();
+    fetchRecords({}, false);
   }, []);
+
+  // Real-time live polling (every 4 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRecords({}, true);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [fetchRecords]);
+
+  // Quick preset handler
+  const handleQuickPreset = (preset) => {
+    setActivePreset(preset);
+    const now = new Date();
+    let from = '';
+    let to = '';
+
+    if (preset === 'today') {
+      from = formatDateString(now);
+      to = formatDateString(now);
+    } else if (preset === 'yesterday') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      from = formatDateString(y);
+      to = formatDateString(y);
+    } else if (preset === '7days') {
+      const past = new Date();
+      past.setDate(past.getDate() - 6);
+      from = formatDateString(past);
+      to = formatDateString(now);
+    } else if (preset === '30days') {
+      const past = new Date();
+      past.setDate(past.getDate() - 29);
+      from = formatDateString(past);
+      to = formatDateString(now);
+    } else {
+      from = '';
+      to = '';
+    }
+
+    setDateFrom(from);
+    setDateTo(to);
+    setCurrentPage(1);
+    fetchRecords({ dateFrom: from, dateTo: to }, false);
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchRecords();
+    setCurrentPage(1);
+    fetchRecords({}, false);
   };
 
   const handleReset = () => {
-    setDateFrom('2026-10-01');
-    setDateTo('2026-10-02');
+    setDateFrom('');
+    setDateTo('');
+    setActivePreset('all');
     setPaymentMethod('All');
     setStatus('All');
     setOrderNo('');
-    setTimeout(fetchRecords, 50);
+    setCurrentPage(1);
+    fetchRecords({ dateFrom: '', dateTo: '', paymentMethod: 'All', status: 'All', orderNo: '' }, false);
   };
 
   const copyToClipboard = (text, id) => {
@@ -73,6 +162,21 @@ export default function DepositRecordsPage() {
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
   };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(records.length / pageSize) || 1;
+  const paginatedRecords = records.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Summary Metrics
+  const totalPaidSum = records
+    .filter((r) => r.status === 'Approved')
+    .reduce((sum, r) => sum + (Number(r.paid_amount) || 0), 0);
+  const totalCreditsSum = records
+    .filter((r) => r.status === 'Approved')
+    .reduce((sum, r) => sum + (Number(r.received_amount) || 0), 0);
+  const approvedCount = records.filter((r) => r.status === 'Approved').length;
+  const pendingCount = records.filter((r) => r.status === 'Pending').length;
+  const expiredCount = records.filter((r) => r.status === 'Expired').length;
 
   return (
     <div className="min-h-screen bg-[#f0f4f9] text-slate-800 flex">
@@ -88,41 +192,144 @@ export default function DepositRecordsPage() {
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
-          {/* Page Title */}
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            Wallet Deposit Records
-          </h1>
+          {/* Page Title & Real-Time Sync Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                Wallet Deposit Records
+              </h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Real-time tracking of player fiat, card, and crypto deposit requests.
+              </p>
+            </div>
 
-          {/* Filter Bar (matching Screenshot 11) */}
-          <form onSubmit={handleSearch} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/90">
+            {/* Real-time Indicator & Manual Refresh */}
+            <div className="flex items-center gap-2.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Live Sync</span>
+                {lastUpdated && (
+                  <span className="text-[10px] text-emerald-600/80 font-mono ml-0.5">
+                    {lastUpdated.toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fetchRecords({}, false)}
+                disabled={isLoading || isRefreshing}
+                title="Refresh Records"
+                className="inline-flex items-center justify-center p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-2xs transition disabled:opacity-50"
+              >
+                <RotateCw className={`w-4 h-4 ${isRefreshing || isLoading ? 'animate-spin text-amber-500' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Records</span>
+              <div className="text-xl font-black text-slate-900 mt-1">{records.length}</div>
+              <span className="text-[10px] text-slate-400">In current filter</span>
+            </div>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">Approved Paid</span>
+              <div className="text-xl font-black text-slate-900 mt-1">${totalPaidSum.toFixed(2)}</div>
+              <span className="text-[10px] text-emerald-600 font-semibold">{approvedCount} Successful</span>
+            </div>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">Credits Credited</span>
+              <div className="text-xl font-black text-emerald-600 font-mono mt-1">${totalCreditsSum.toFixed(0)}</div>
+              <span className="text-[10px] text-slate-400">Total chips received</span>
+            </div>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">Pending / Expired</span>
+              <div className="text-xl font-black text-slate-900 mt-1">
+                {pendingCount} <span className="text-xs text-slate-400 font-normal">/ {expiredCount} Exp</span>
+              </div>
+              <span className="text-[10px] text-slate-400">Awaiting or expired</span>
+            </div>
+          </div>
+
+          {/* Filter Bar with Interactive Calendar & Presets */}
+          <form onSubmit={handleSearch} className="bg-white rounded-2xl p-5 shadow-2xs border border-slate-200/90 space-y-4">
+            {/* Quick Presets Row */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-slate-100">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Quick Range:</span>
+              {[
+                { id: 'all', label: 'All Time' },
+                { id: 'today', label: 'Today' },
+                { id: 'yesterday', label: 'Yesterday' },
+                { id: '7days', label: 'Last 7 Days' },
+                { id: '30days', label: 'Last 30 Days' },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleQuickPreset(p.id)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-2xs ${
+                    activePreset === p.id
+                      ? 'bg-[#1a304e] text-white'
+                      : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+
+              {(dateFrom || dateTo) && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickPreset('all')}
+                  className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 ml-auto"
+                >
+                  <X className="w-3.5 h-3.5" /> Clear Dates
+                </button>
+              )}
+            </div>
+
             <div className="flex flex-wrap items-center gap-3">
-              {/* Date From */}
+              {/* Date From - Interactive Calendar Picker */}
               <div className="relative flex-1 min-w-[150px]">
                 <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Date From</label>
-                <div className="relative flex items-center border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                <div
+                  onClick={() => dateFromInputRef.current?.showPicker && dateFromInputRef.current.showPicker()}
+                  className="relative flex items-center border border-slate-300 rounded-lg px-3 py-2 bg-white hover:border-slate-400 transition cursor-pointer"
+                >
                   <input
-                    type="text"
+                    ref={dateFromInputRef}
+                    type="date"
                     value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    placeholder="YYYY-MM-DD"
-                    className="w-full text-xs text-slate-800 bg-transparent focus:outline-none"
+                    onChange={(e) => {
+                      setDateFrom(e.target.value);
+                      setActivePreset('custom');
+                    }}
+                    className="w-full text-xs text-slate-800 bg-transparent focus:outline-none cursor-pointer"
                   />
-                  <Calendar className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
+                  <Calendar className="w-4 h-4 text-slate-400 shrink-0 ml-1 pointer-events-none" />
                 </div>
               </div>
 
-              {/* Date To */}
+              {/* Date To - Interactive Calendar Picker */}
               <div className="relative flex-1 min-w-[150px]">
                 <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Date To</label>
-                <div className="relative flex items-center border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                <div
+                  onClick={() => dateToInputRef.current?.showPicker && dateToInputRef.current.showPicker()}
+                  className="relative flex items-center border border-slate-300 rounded-lg px-3 py-2 bg-white hover:border-slate-400 transition cursor-pointer"
+                >
                   <input
-                    type="text"
+                    ref={dateToInputRef}
+                    type="date"
                     value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    placeholder="YYYY-MM-DD"
-                    className="w-full text-xs text-slate-800 bg-transparent focus:outline-none"
+                    onChange={(e) => {
+                      setDateTo(e.target.value);
+                      setActivePreset('custom');
+                    }}
+                    className="w-full text-xs text-slate-800 bg-transparent focus:outline-none cursor-pointer"
                   />
-                  <Calendar className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
+                  <Calendar className="w-4 h-4 text-slate-400 shrink-0 ml-1 pointer-events-none" />
                 </div>
               </div>
 
@@ -138,6 +345,7 @@ export default function DepositRecordsPage() {
                   <option value="Cash App">Cash App</option>
                   <option value="Apple Pay">Apple Pay</option>
                   <option value="Google Pay">Google Pay</option>
+                  <option value="Freeplay Bonus">Freeplay Bonus</option>
                 </select>
               </div>
 
@@ -150,20 +358,20 @@ export default function DepositRecordsPage() {
                   className="w-full text-xs text-slate-800 border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none cursor-pointer"
                 >
                   <option value="All">All</option>
-                  <option value="Created">Created</option>
-                  <option value="Pending">Pending</option>
                   <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Created">Created</option>
                   <option value="Expired">Expired</option>
+                  <option value="Rejected">Rejected</option>
                 </select>
               </div>
 
               {/* Order No */}
               <div className="relative flex-1 min-w-[160px]">
-                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">&nbsp;</label>
+                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Order No</label>
                 <input
                   type="text"
-                  placeholder="Order No"
+                  placeholder="Order No..."
                   value={orderNo}
                   onChange={(e) => setOrderNo(e.target.value)}
                   className="w-full text-xs text-slate-800 border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none placeholder-slate-400"
@@ -174,14 +382,16 @@ export default function DepositRecordsPage() {
               <div className="flex items-center gap-2 mt-4 sm:mt-auto">
                 <button
                   type="submit"
-                  className="bg-[#1a304e] hover:bg-[#132238] text-white text-xs font-bold px-6 py-2 rounded-lg transition"
+                  disabled={isLoading}
+                  className="bg-[#1a304e] hover:bg-[#132238] text-white text-xs font-bold px-6 py-2.5 rounded-lg transition shadow-2xs flex items-center gap-1.5 disabled:opacity-60"
                 >
-                  Search
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Search</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold px-5 py-2 rounded-lg transition"
+                  className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold px-5 py-2.5 rounded-lg transition shadow-2xs"
                 >
                   Reset
                 </button>
@@ -189,33 +399,46 @@ export default function DepositRecordsPage() {
             </div>
           </form>
 
-          {/* Table Container (matching Screenshot 11) */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden">
+          {/* Table Container (matching exact screenshot styling) */}
+          <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/90 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-700">
-                <thead className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                <thead className="bg-[#0f172a] text-slate-200 text-[11px] font-bold uppercase tracking-wider border-b border-slate-800">
                   <tr>
-                    <th className="py-3.5 px-4">USERNAME</th>
-                    <th className="py-3.5 px-4">ORDER NO</th>
-                    <th className="py-3.5 px-4">PAYMENT METHOD</th>
-                    <th className="py-3.5 px-4">PAID</th>
-                    <th className="py-3.5 px-4">RECEIVED</th>
-                    <th className="py-3.5 px-4">STATUS</th>
-                    <th className="py-3.5 px-4">WALLET BALANCE BEFORE</th>
-                    <th className="py-3.5 px-4">WALLET BALANCE AFTER</th>
-                    <th className="py-3.5 px-4">CREATION TIME</th>
-                    <th className="py-3.5 px-4">OPERATION TIME</th>
+                    <th className="py-4 px-4">USERNAME</th>
+                    <th className="py-4 px-4">ORDER NO</th>
+                    <th className="py-4 px-4">PAYMENT METHOD</th>
+                    <th className="py-4 px-4">PAID</th>
+                    <th className="py-4 px-4">RECEIVED</th>
+                    <th className="py-4 px-4">STATUS</th>
+                    <th className="py-4 px-4">WALLET BALANCE BEFORE</th>
+                    <th className="py-4 px-4">WALLET BALANCE AFTER</th>
+                    <th className="py-4 px-4">CREATION TIME</th>
+                    <th className="py-4 px-4">OPERATION TIME</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {records.length === 0 ? (
+                  {paginatedRecords.length === 0 ? (
                     <tr>
                       <td colSpan={10} className="py-16 text-center text-slate-400">
-                        {isLoading ? 'Loading records...' : 'No records found'}
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <AlertCircle className="w-7 h-7 text-slate-300" />
+                          <span className="font-semibold text-slate-500">
+                            {isLoading ? 'Loading records...' : 'No deposit records found for the selected filters.'}
+                          </span>
+                          {!isLoading && (
+                            <button
+                              onClick={handleReset}
+                              className="text-xs text-blue-600 hover:underline font-bold mt-1"
+                            >
+                              Reset filters to view all records
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ) : (
-                    records.map((r) => {
+                    paginatedRecords.map((r) => {
                       const isCreated = r.status === 'Created';
                       const isApproved = r.status === 'Approved';
                       const isPending = r.status === 'Pending';
@@ -223,8 +446,8 @@ export default function DepositRecordsPage() {
                       const isExpired = r.status === 'Expired';
 
                       return (
-                        <tr key={r.id} className="hover:bg-slate-50/50 transition">
-                          <td className="py-4 px-4 font-semibold text-slate-800">{r.username}</td>
+                        <tr key={r.id} className="hover:bg-slate-50/70 transition">
+                          <td className="py-4 px-4 font-bold text-slate-900">{r.username}</td>
                           <td className="py-4 px-4 font-mono font-medium text-slate-700">
                             <span className="flex items-center gap-1.5">
                               <span>{r.order_no}</span>
@@ -232,7 +455,7 @@ export default function DepositRecordsPage() {
                                 type="button"
                                 onClick={() => copyToClipboard(r.order_no, r.id)}
                                 title="Copy Order Number"
-                                className="text-slate-400 hover:text-slate-600 transition"
+                                className="text-slate-400 hover:text-slate-600 transition p-0.5"
                               >
                                 {copiedId === r.id ? (
                                   <Check className="w-3.5 h-3.5 text-emerald-500" />
@@ -243,32 +466,40 @@ export default function DepositRecordsPage() {
                             </span>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="text-[10px] text-slate-400 block">NnPay</span>
-                            <span className="font-medium text-slate-800">{r.payment_method}</span>
+                            <span className="text-[10px] text-slate-400 block font-semibold">NnPay</span>
+                            <span className="font-semibold text-slate-800">{r.payment_method}</span>
                           </td>
-                          <td className="py-4 px-4 font-bold text-slate-900">${Number(r.paid_amount).toFixed(2)}</td>
+                          <td className="py-4 px-4 font-black text-slate-900">
+                            ${Number(r.paid_amount || 0).toFixed(2)}
+                          </td>
                           <td className="py-4 px-4 font-bold text-emerald-600 font-mono text-sm">
-                            {Number(r.received_amount).toFixed(0)}
+                            {Number(r.received_amount || 0).toFixed(0)}
                           </td>
                           <td className="py-4 px-4">
                             <span
-                              className={`px-3 py-1 rounded-full text-[11px] font-bold inline-block text-white ${
+                              className={`px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 text-white shadow-2xs ${
                                 isApproved
                                   ? 'bg-emerald-600'
                                   : isRejected
-                                  ? 'bg-red-500'
+                                  ? 'bg-rose-600'
                                   : isExpired
-                                  ? 'bg-slate-400'
+                                  ? 'bg-slate-500'
                                   : isCreated
                                   ? 'bg-amber-600'
                                   : 'bg-blue-600'
                               }`}
                             >
-                              {r.status}
+                              {isCreated && <Clock className="w-3 h-3" />}
+                              {isApproved && <CheckCircle2 className="w-3 h-3" />}
+                              <span>{r.status}</span>
                             </span>
                           </td>
-                          <td className="py-4 px-4 text-slate-600">{Number(r.wallet_balance_before).toFixed(0)}</td>
-                          <td className="py-4 px-4 text-slate-600">{Number(r.wallet_balance_after).toFixed(0)}</td>
+                          <td className="py-4 px-4 text-slate-600 font-mono">
+                            ${Number(r.wallet_balance_before || 0).toFixed(2)}
+                          </td>
+                          <td className="py-4 px-4 text-slate-600 font-mono">
+                            ${Number(r.wallet_balance_after || 0).toFixed(2)}
+                          </td>
                           <td className="py-4 px-4 text-slate-500 font-mono text-[11px]">{r.created_at}</td>
                           <td className="py-4 px-4 text-slate-500 font-mono text-[11px]">{r.operation_time}</td>
                         </tr>
@@ -280,27 +511,46 @@ export default function DepositRecordsPage() {
             </div>
 
             {/* Pagination Controls */}
-            <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-1.5 text-xs">
-              <button
-                type="button"
-                disabled
-                className="w-7 h-7 rounded border border-slate-200 bg-slate-50 text-slate-400 flex items-center justify-center cursor-not-allowed text-[11px]"
-              >
-                &lt;
-              </button>
-              <button
-                type="button"
-                className="w-7 h-7 rounded bg-[#1a304e] text-white font-bold flex items-center justify-center text-[11px]"
-              >
-                1
-              </button>
-              <button
-                type="button"
-                disabled
-                className="w-7 h-7 rounded border border-slate-200 bg-slate-50 text-slate-400 flex items-center justify-center cursor-not-allowed text-[11px]"
-              >
-                &gt;
-              </button>
+            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <span className="text-slate-500 text-[11px]">
+                Showing {records.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{' '}
+                {Math.min(currentPage * pageSize, records.length)} of {records.length} records
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                  className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center text-[11px] disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setCurrentPage(num)}
+                    className={`w-7 h-7 rounded text-[11px] font-bold flex items-center justify-center transition ${
+                      currentPage === num
+                        ? 'bg-[#1a304e] text-white shadow-2xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center text-[11px] disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </main>
