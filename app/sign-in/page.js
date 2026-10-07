@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Logo from '@/components/Logo';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export default function SignInPage() {
@@ -64,22 +65,20 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#131f32] flex flex-col justify-between py-10 px-4 sm:px-6 relative">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100 to-[#e2e8f0] flex flex-col justify-between py-10 px-4 sm:px-6 relative font-sans">
       <div className="flex-1 flex items-center justify-center">
-        {/* Centered White Card (Screenshot "image copy.png") */}
-        <div className="bg-white rounded-3xl max-w-md w-full p-8 sm:p-10 shadow-2xl">
-          {/* Logo Badge */}
-          <div className="flex justify-center mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#1c304d] text-white flex items-center justify-center text-2xl font-bold shadow-md">
-              T
-            </div>
+        {/* Centered White Card */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl max-w-md w-full p-8 sm:p-10 shadow-xl">
+          {/* Official Logo Badge */}
+          <div className="flex justify-center mb-5">
+            <Logo size="large" href="/sign-in" theme="light" />
           </div>
 
           {/* Title & Subtitle */}
           <div className="text-center mb-6">
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">TRP Game Wallet</h1>
-            <p className="text-xs text-gray-500 mt-1">Sign In</p>
-            <div className="w-8 h-0.5 bg-gray-400 mx-auto mt-2 rounded-full"></div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Game Wallet Sign In</h1>
+            <p className="text-xs text-slate-500 mt-1">Access your 12 platforms with one master wallet</p>
+            <div className="w-10 h-0.5 bg-amber-500 mx-auto mt-2 rounded-full"></div>
           </div>
 
           {errorMsg && (
@@ -92,7 +91,7 @@ export default function SignInPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Username / Email */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Username / Email
               </label>
               <input
@@ -101,13 +100,13 @@ export default function SignInPage() {
                 placeholder="Enter your username or email"
                 value={formData.usernameOrEmail}
                 onChange={(e) => setFormData({ ...formData, usernameOrEmail: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-1 focus:ring-amber-500 transition"
               />
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -117,12 +116,12 @@ export default function SignInPage() {
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-11 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-1 focus:ring-amber-500 transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -131,7 +130,7 @@ export default function SignInPage() {
 
             {/* Verify Code with Captcha Box */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Verify Code
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -141,21 +140,20 @@ export default function SignInPage() {
                   placeholder="Enter code"
                   value={formData.verifyCode}
                   onChange={(e) => setFormData({ ...formData, verifyCode: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-1 focus:ring-amber-500 transition font-mono tracking-widest text-center"
                 />
                 <div
                   onClick={refreshCaptcha}
                   title="Click to refresh verification code"
-                  className="bg-[#f8fafc] border border-gray-200 rounded-xl px-4 py-2 flex items-center justify-center cursor-pointer select-none relative overflow-hidden group hover:border-gray-300 transition"
+                  className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 flex items-center justify-center cursor-pointer select-none relative overflow-hidden group hover:border-slate-300 transition"
                 >
-                  {/* Subtle scratch lines like real captcha in screenshot */}
-                  <div className="absolute inset-0 pointer-events-none opacity-40">
+                  <div className="absolute inset-0 pointer-events-none opacity-30">
                     <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                       <line x1="5%" y1="20%" x2="90%" y2="80%" stroke="#64748b" strokeWidth="1" />
                       <line x1="10%" y1="85%" x2="85%" y2="15%" stroke="#94a3b8" strokeWidth="1" />
                     </svg>
                   </div>
-                  <span className="font-serif text-lg tracking-[0.35em] text-gray-800 font-bold select-none pl-1">
+                  <span className="font-serif text-lg tracking-[0.35em] text-slate-800 font-bold select-none pl-1">
                     {captchaCode.split('').join(' ')}
                   </span>
                 </div>
@@ -167,7 +165,7 @@ export default function SignInPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[#1c304d] hover:bg-[#253f63] text-white font-semibold py-3.5 rounded-xl text-sm transition shadow-sm disabled:opacity-50"
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md disabled:opacity-50 tracking-wide uppercase"
               >
                 {isLoading ? 'Signing In...' : 'Sign In'}
               </button>
@@ -177,13 +175,13 @@ export default function SignInPage() {
             <div className="text-center space-y-2 pt-2">
               <Link
                 href="/player/settings"
-                className="text-xs text-[#2563eb] hover:underline block"
+                className="text-xs text-amber-600 hover:text-amber-700 font-medium block"
               >
                 Forgot your password?
               </Link>
-              <div className="text-xs text-gray-600">
+              <div className="text-xs text-slate-500">
                 Don&apos;t have an account?{' '}
-                <Link href="/sign-up" className="text-[#1d4ed8] font-bold hover:underline">
+                <Link href="/sign-up" className="text-slate-900 font-bold hover:underline">
                   Sign up here
                 </Link>
               </div>
@@ -193,8 +191,8 @@ export default function SignInPage() {
       </div>
 
       {/* Footer */}
-      <footer className="text-center text-xs text-gray-400 py-4">
-        Copyright © 2026 TRP. All rights reserved.
+      <footer className="text-center text-xs text-slate-400 py-4">
+        Copyright © 2026 TRP Vegas Vault. All rights reserved.
       </footer>
     </div>
   );
