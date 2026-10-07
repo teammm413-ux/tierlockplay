@@ -161,7 +161,10 @@ function AdminChatContent() {
                   return (
                     <div
                       key={c.id}
-                      onClick={() => setSelectedUserId(c.id)}
+                      onClick={() => {
+                        setSelectedUserId(c.id);
+                        loadMessages(c.id);
+                      }}
                       className={`p-3.5 flex items-center justify-between cursor-pointer transition ${
                         isSelected ? 'bg-emerald-50/80 border-l-4 border-emerald-500' : 'hover:bg-slate-50'
                       }`}
