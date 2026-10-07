@@ -253,24 +253,24 @@ export default function DepositPage() {
                 )}
               </div>
 
-              {/* TapTapUp Hosted Checkout & Sandbox Verification Card */}
+              {/* Revsol Hosted Checkout & Verification Card */}
               <div className="bg-gradient-to-br from-[#0b1728] to-[#1a2e4a] text-white p-6 rounded-2xl shadow-md space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-amber-400" />
                     <span className="text-xs font-bold tracking-wider uppercase text-amber-400">
-                      TapTapUp Secure Gateway
+                      Revsol Payment Gateway
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-slate-300">
-                    Product ID: 2507 (Sandbox)
+                  <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-amber-300">
+                    Merchant ID: 2026103966
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-white">Complete Payment Online</h3>
+                  <h3 className="text-base font-bold text-white">Complete Payment Online via Revsol</h3>
                   <p className="text-xs text-slate-300 mt-1">
-                    Click the button below to test with the gateway, or click <strong>Simulate Webhook</strong> for 1-click sandbox verification.
+                    Click the button below to complete checkout on Revsol hosted gateway, or use <strong>Simulate Webhook</strong> for instant sandbox testing.
                   </p>
                 </div>
 
@@ -282,7 +282,7 @@ export default function DepositPage() {
                       rel="noopener noreferrer"
                       className="flex-1 py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg"
                     >
-                      <span>Pay ${createdOrder.paidAmount} USD on TapTapUp</span>
+                      <span>Pay ${createdOrder.paidAmount} USD on Revsol</span>
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   ) : null}
@@ -396,23 +396,35 @@ export default function DepositPage() {
                 {/* Pay Using */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-3 uppercase tracking-wider">
-                    Pay Using
+                    Pay Using Channel
                   </label>
-                  <div className="flex flex-wrap gap-3">
-                    {['Cash APP', 'Apple Pay', 'Google Pay', 'Debit Card'].map((channel) => {
-                      const isActive = payUsing === channel;
+                  <div className="flex flex-wrap gap-2.5">
+                    {[
+                      { name: 'Cash App', productId: '272835', icon: '💵', badge: 'Popular' },
+                      { name: 'Google & Apple Pay', productId: '49794', icon: '📱', badge: '1-Click' },
+                      { name: 'PayPal', productId: '373683', icon: '🅿️', badge: 'Secured' },
+                      { name: 'Chime', productId: '314026', icon: '🏦', badge: 'Direct' },
+                      { name: 'BTC Lightning', productId: '93593', icon: '⚡', badge: 'Crypto' },
+                    ].map((channel) => {
+                      const isActive = payUsing === channel.name;
                       return (
                         <button
-                          key={channel}
+                          key={channel.name}
                           type="button"
-                          onClick={() => setPayUsing(channel)}
-                          className={`px-7 py-2.5 rounded-full text-xs font-bold transition shadow-sm ${
+                          onClick={() => setPayUsing(channel.name)}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 ${
                             isActive
-                              ? 'bg-[#1e293b] text-white ring-2 ring-[#1e293b]/20'
+                              ? 'bg-[#1e293b] text-white ring-2 ring-[#1e293b]/20 shadow-md'
                               : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                           }`}
                         >
-                          {channel}
+                          <span>{channel.icon}</span>
+                          <span>{channel.name}</span>
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                            isActive ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            #{channel.productId}
+                          </span>
                         </button>
                       );
                     })}

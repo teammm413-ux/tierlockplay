@@ -65,11 +65,11 @@ export async function POST(request) {
           // Create notification for user
           await ChromeNotification.create({
             user_id: user._id.toString(),
-            title: 'TapTapUp Deposit Completed! 💰',
-            message: `Your payment of $${deposit.received_amount.toFixed(2)} via TapTapUp (Order #${orderId || deposit.order_no}) has been credited!`,
+            title: 'Revsol Deposit Completed! 💰',
+            message: `Your payment of $${deposit.received_amount.toFixed(2)} via Revsol (Order #${orderId || deposit.order_no}) has been credited!`,
           });
 
-          console.log(`[TapTapUp Webhook] Successfully approved deposit ${deposit.order_no} for user ${user.username}, new balance: $${balanceAfter}`);
+          console.log(`[Revsol Webhook] Successfully approved deposit ${deposit.order_no} for user ${user.username}, new balance: $${balanceAfter}`);
         }
       }
 

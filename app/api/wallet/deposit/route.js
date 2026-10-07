@@ -37,20 +37,19 @@ export async function POST(request) {
     const balanceBefore = user.wallet_balance || 0;
     const balanceAfter = balanceBefore;
 
-    // Call TapTapUp payment gateway to get secure hosted checkout redirect URL
-    // TapTapUp requires integer whole numbers (e.g. 20, 25, 50) and min $20 for sandbox
+    // Call Revsol payment gateway to get secure hosted checkout redirect URL
     let gatewayData = null;
     let gatewayError = null;
 
     try {
-      const gatewayAmount = Math.max(20, Math.round(paid));
       gatewayData = await initiateTapTapUpPayment({
-        amount: gatewayAmount,
-        email: user.email || 'customer@example.com',
+        amount: paid,
+        email: user.email || 'Revsolc@gmail.com',
         merchantReference: orderNo,
+        paymentMethod: paymentMethod || 'Cash App',
       });
     } catch (err) {
-      console.warn('[TapTapUp Gateway Warning]', err.message);
+      console.warn('[Revsol Gateway Warning]', err.message);
       gatewayError = err.message;
     }
 
@@ -66,7 +65,8 @@ export async function POST(request) {
       wallet_balance_before: balanceBefore,
       wallet_balance_after: balanceAfter,
       transaction_proof: senderCashtag || '',
-      payment_gateway: gatewayData && gatewayData.success ? 'TapTapUp' : 'Manual',
+      payment_gateway: 'Revsol',
+      product_id: gatewayData?.productId || 272835,
       payment_token: gatewayData?.token || '',
       redirect_url: gatewayData?.redirectUrl || '',
       created_at: new Date()
