@@ -3,18 +3,40 @@
 import React, { useState } from 'react';
 import { Gift, Sparkles, X, Check, Award } from 'lucide-react';
 
-export default function FreeplayModal({ isOpen: controlledIsOpen, onClose, onBonusClaimed, onClaimSuccess, user }) {
+export default function FreeplayModal({
+  isOpen: controlledIsOpen,
+  onClose,
+  onBonusClaimed,
+  onClaimSuccess,
+  onClaimed,
+  user,
+}) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
-  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  // Open if either parent passes true OR internal button is clicked
+  const isOpen = Boolean(controlledIsOpen || internalIsOpen);
 
   const [isClaimed, setIsClaimed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleSetOpen = (val) => {
-    setInternalIsOpen(val);
-    if (!val && onClose) {
+  const handleOpen = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setErrorMsg('');
+    setSuccessMsg('');
+    setInternalIsOpen(true);
+  };
+
+  const handleClose = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setInternalIsOpen(false);
+    if (onClose) {
       onClose();
     }
   };
@@ -22,6 +44,7 @@ export default function FreeplayModal({ isOpen: controlledIsOpen, onClose, onBon
   const handleClaim = async () => {
     setIsSubmitting(true);
     setErrorMsg('');
+    setSuccessMsg('');
     try {
       const res = await fetch('/api/bonus/claim-freeplay', {
         method: 'POST',
@@ -29,11 +52,19 @@ export default function FreeplayModal({ isOpen: controlledIsOpen, onClose, onBon
       const data = await res.json();
       if (data.success) {
         setIsClaimed(true);
-        setSuccessMsg(data.message);
+        setSuccessMsg(data.message || 'Congratulations! $5 Freeplay credited!');
         if (onBonusClaimed) onBonusClaimed(data.newBalance);
         if (onClaimSuccess) onClaimSuccess(data.newBalance);
+        if (onClaimed) onClaimed(data.newBalance);
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('balanceUpdated', { detail: { newBalance: data.newBalance } })
+          );
+        }
+
         setTimeout(() => {
-          handleSetOpen(false);
+          handleClose();
         }, 2200);
       } else {
         setErrorMsg(data.message || 'Failed to claim freeplay');
@@ -48,15 +79,16 @@ export default function FreeplayModal({ isOpen: controlledIsOpen, onClose, onBon
   return (
     <>
       {/* Single Floating Freeplay Button (Bottom Right) */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-6 right-6 z-40 select-none">
         <button
-          onClick={() => handleSetOpen(true)}
-          className="bg-gradient-to-r from-amber-500 via-orange-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-extrabold text-xs sm:text-sm px-4 sm:px-5 py-3 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center gap-2.5 transition transform hover:scale-105 active:scale-95 border border-amber-300/40"
+          type="button"
+          onClick={handleOpen}
+          className="bg-gradient-to-r from-amber-500 via-orange-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-extrabold text-xs sm:text-sm px-4 sm:px-5 py-3 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center gap-2.5 transition transform hover:scale-105 active:scale-95 border border-amber-300/40 cursor-pointer"
           title="Claim $5 Freeplay Bonus"
         >
-          <span className="text-lg">🎁</span>
+          <span className="text-xl animate-bounce">🎁</span>
           <div className="text-left leading-tight">
-            <div className="font-black tracking-wide text-xs sm:text-sm">$5 FREEPLAY</div>
+            <div className="font-black tracking-wide text-xs sm:text-sm text-white drop-shadow-sm">$5 FREEPLAY</div>
             <div className="text-[9px] sm:text-[10px] text-amber-100 font-semibold uppercase tracking-wider">WAITING FOR YOU</div>
           </div>
         </button>
@@ -64,15 +96,22 @@ export default function FreeplayModal({ isOpen: controlledIsOpen, onClose, onBon
 
       {/* Freeplay Claim Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-gradient-to-b from-[#131b26] to-[#0a0e17] border border-amber-500/40 rounded-2xl p-6 shadow-[0_0_50px_rgba(245,158,11,0.25)] text-center overflow-hidden font-sans">
+        <div
+          onClick={handleClose}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-gradient-to-b from-[#131b26] to-[#0a0e17] border border-amber-500/40 rounded-2xl p-6 shadow-[0_0_50px_rgba(245,158,11,0.25)] text-center overflow-hidden font-sans"
+          >
             {/* Background glowing orb */}
             <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
             {/* Close Button */}
             <button
-              onClick={() => handleSetOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition"
+              type="button"
+              onClick={handleClose}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition cursor-pointer"
               title="Close"
             >
               <X className="w-5 h-5" />
@@ -105,9 +144,10 @@ export default function FreeplayModal({ isOpen: controlledIsOpen, onClose, onBon
             )}
 
             <button
+              type="button"
               onClick={handleClaim}
               disabled={isSubmitting || isClaimed}
-              className="w-full py-3.5 px-6 rounded-xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 hover:brightness-110 active:scale-95 transition-all shadow-[0_4px_20px_rgba(245,158,11,0.4)] disabled:opacity-50"
+              className="w-full py-3.5 px-6 rounded-xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 hover:brightness-110 active:scale-95 transition-all shadow-[0_4px_20px_rgba(245,158,11,0.4)] disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? 'Crediting Wallet...' : isClaimed ? 'Bonus Claimed! 🎉' : 'Collect $5 Freeplay'}
             </button>
