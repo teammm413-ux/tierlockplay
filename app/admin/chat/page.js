@@ -87,6 +87,18 @@ function AdminChatContent() {
     setReplyText('');
     setIsSending(true);
 
+    // Optimistic message
+    const tempMsg = {
+      id: Date.now(),
+      sender_type: 'admin',
+      sender_name: 'You (Admin)',
+      message: text,
+      created_at: new Date().toISOString(),
+      is_read_by_user: false,
+      is_read_by_admin: true,
+    };
+    setMessages((prev) => [...prev, tempMsg]);
+
     try {
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
