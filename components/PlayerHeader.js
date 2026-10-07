@@ -44,30 +44,44 @@ export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLo
     }
   };
 
+  const handleToggleSidebar = () => {
+    if (onToggleSidebar) onToggleSidebar();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('toggle-player-sidebar'));
+    }
+  };
+
+  const handleOpenChat = () => {
+    if (onOpenChat) onOpenChat();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open-chat-support'));
+    }
+  };
+
   const balance = Number(user?.wallet_balance || 0).toFixed(2);
 
   return (
     <header className="h-14 bg-[#0b1728] border-b border-[#15233a] px-4 sm:px-6 flex items-center justify-between z-30 select-none">
-      {/* Left: Sidebar Toggle + Balance Chip matching Screenshot image copy 3 */}
+      {/* Left: Sidebar Toggle + Balance Chip */}
       <div className="flex items-center gap-4">
         <button
-          onClick={onToggleSidebar}
+          onClick={handleToggleSidebar}
           className="text-slate-300 hover:text-white p-1 rounded-lg hover:bg-white/5 transition"
           title="Toggle Navigation"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Balance Chip from Screenshot: Green container with wallet icon and balance */}
+        {/* Balance Chip: Green container with wallet icon and balance */}
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#064e3b]/30 border border-[#059669]/40 text-[#10b981] font-mono font-bold text-xs shadow-sm">
           <Wallet className="w-3.5 h-3.5" />
           <span>${balance}</span>
         </div>
       </div>
 
-      {/* Right: Toast or Action Controls matching Screenshot */}
+      {/* Right: Toast or Action Controls */}
       <div className="flex items-center gap-3 sm:gap-4">
-        {/* Optional Login Successful toast from screenshot */}
+        {/* Optional Login Successful toast */}
         {toastVisible && (
           <div className="hidden sm:flex items-center gap-2 bg-[#15803d] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-md animate-fadeIn">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -83,18 +97,18 @@ export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLo
 
         {/* WhatsApp Chat Desk Trigger */}
         <button
-          onClick={onOpenChat}
-          className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#25d366]/10 text-[#25d366] hover:bg-[#25d366]/20 border border-[#25d366]/30 text-xs font-bold transition"
+          onClick={handleOpenChat}
+          className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25d366]/15 text-[#25d366] hover:bg-[#25d366]/25 border border-[#25d366]/40 text-xs font-bold transition shadow-xs"
           title="WhatsApp Live Support"
         >
           <MessageCircle className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">Support</span>
+          <span>Support</span>
           {unreadChatCount > 0 && (
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
           )}
         </button>
 
-        {/* Logout Button matching Screenshot */}
+        {/* Logout Button */}
         <button
           onClick={handleLogout}
           className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5"

@@ -3,8 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageSquare, X, CheckCheck, Smile, Paperclip, ChevronRight, Bell, Sparkles } from 'lucide-react';
 
-export default function WhatsAppChat() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
@@ -12,7 +14,23 @@ export default function WhatsAppChat() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Check unread messages on mount and every 10 seconds
+  const handleSetOpen = (val) => {
+    setInternalIsOpen(val);
+    if (!val && onClose) {
+      onClose();
+    }
+  };
+
+  // Listen for global open chat event dispatched by PlayerHeader
+  useEffect(() => {
+    const handleOpenChat = () => {
+      handleSetOpen(true);
+    };
+    window.addEventListener('open-chat-support', handleOpenChat);
+    return () => window.removeEventListener('open-chat-support', handleOpenChat);
+  }, []);
+
+  // Check unread messages on mount and periodically
   const checkUnread = async () => {
     try {
       const res = await fetch('/api/chat/unread');
@@ -126,7 +144,7 @@ export default function WhatsAppChat() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  setIsOpen(true);
+                  handleSetOpen(true);
                   setBannerAlert(null);
                 }}
                 className="bg-white text-emerald-900 font-bold px-4 py-1.5 rounded-full text-xs uppercase tracking-wider hover:bg-amber-100 transition shadow-md flex items-center gap-1"
@@ -145,44 +163,9 @@ export default function WhatsAppChat() {
         </div>
       )}
 
-      {/* 2. Floating WhatsApp Trigger Button */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <button
-          onClick={() => {
-            setIsOpen(!isOpen);
-            if (!isOpen) {
-              setBannerAlert(null);
-            }
-          }}
-          className="relative w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#20ba5a] text-white flex items-center justify-center shadow-[0_8px_25px_rgba(37,211,102,0.45)] transform hover:scale-105 transition-all duration-300 group"
-          aria-label="Open Live Chat Support"
-        >
-          {/* Glowing pulse ring */}
-          <span className="absolute -inset-1 rounded-full bg-[#25D366]/40 animate-ping group-hover:opacity-100 opacity-75"></span>
-
-          {isOpen ? (
-            <X className="w-6 h-6 relative z-10" />
-          ) : (
-            <svg
-              className="w-7 h-7 relative z-10 fill-current"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12.031 2C6.496 2 2 6.496 2 12.031c0 1.954.557 3.784 1.523 5.341L2 22l4.802-1.503a9.988 9.988 0 005.229 1.534C17.566 22 22 17.504 22 12.031 22 6.496 17.566 2 12.031 2zm5.792 14.179c-.243.682-1.228 1.251-1.71 1.293-.456.04-1.043.064-3.376-.902-2.981-1.233-4.9-4.249-5.048-4.447-.148-.198-1.205-1.605-1.205-3.061 0-1.456.764-2.172 1.036-2.469.272-.297.594-.371.792-.371.198 0 .396.002.569.01.185.008.433-.07.677.518.248.594.842 2.052.916 2.201.074.148.124.322.025.518-.099.198-.148.322-.297.495-.148.173-.312.386-.445.518-.148.148-.303.309-.13.606.173.297.771 1.272 1.654 2.058 1.135 1.011 2.091 1.324 2.388 1.472.297.148.47.124.643-.074.173-.198.742-.866.94-1.163.198-.297.396-.248.668-.148.272.099 1.733.817 2.03 1.015.297.198.495.297.569.421.074.124.074.718-.169 1.4z" />
-            </svg>
-          )}
-
-          {/* Unread badge */}
-          {unreadCount > 0 && !isOpen && (
-            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-black rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center border-2 border-[#090d16] animate-bounce">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* 3. WhatsApp Chat Box Modal */}
+      {/* 2. WhatsApp Chat Box Modal (No floating trigger button - opened via header Support button) */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 max-w-[calc(100vw-32px)] h-[560px] max-h-[calc(100vh-120px)] bg-[#121b22] border border-[#2a3942] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-32px)] h-[560px] max-h-[calc(100vh-100px)] bg-[#121b22] border border-[#2a3942] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans">
           {/* Header */}
           <div className="bg-[#005c4b] px-4 py-3 text-white flex items-center justify-between shadow-md">
             <div className="flex items-center gap-3">
@@ -194,15 +177,16 @@ export default function WhatsAppChat() {
               </div>
               <div>
                 <div className="font-bold text-sm flex items-center gap-1.5">
-                  <span>Vegas Vault Desk</span>
+                  <span>Vegas Vault Support</span>
                   <span className="text-[10px] bg-emerald-700/60 px-1.5 py-0.5 rounded text-emerald-200 uppercase font-semibold">Live</span>
                 </div>
-                <div className="text-[11px] text-emerald-100/80">Online 24/7 | Fast Payouts</div>
+                <div className="text-[11px] text-emerald-100/80">Online 24/7 | Fast Responses</div>
               </div>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={() => handleSetOpen(false)}
               className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition"
+              title="Close Chat"
             >
               <X className="w-5 h-5" />
             </button>
@@ -238,16 +222,12 @@ export default function WhatsAppChat() {
               backgroundSize: '20px 20px',
             }}
           >
-            {/* Timestamp Notice */}
-            <div className="text-center my-2">
-              <span className="text-[10px] bg-[#182229] text-[#8696a0] px-3 py-1 rounded-md shadow-sm">
-                TODAY • END-TO-END ENCRYPTED
-              </span>
-            </div>
-
             {messages.length === 0 ? (
-              <div className="text-center py-10 text-[#8696a0] text-xs space-y-2">
-                <p>Welcome to Vegas Vault Casino Live Support!</p>
+              <div className="text-center py-12 text-[#8696a0] text-xs space-y-2">
+                <div className="w-12 h-12 rounded-full bg-[#182229] mx-auto flex items-center justify-center text-emerald-400">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <p className="font-bold text-white text-sm">Welcome to Live Support!</p>
                 <p>How can we assist you with your games or payouts today?</p>
               </div>
             ) : (

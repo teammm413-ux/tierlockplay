@@ -146,17 +146,6 @@ export default function PlayerDashboard() {
         </main>
       </div>
 
-      {/* Floating Orange $5 FREEPLAY Button matching Screenshot bottom right */}
-      <button
-        onClick={() => setIsFreeplayOpen(true)}
-        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-amber-500 via-orange-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-extrabold text-xs sm:text-sm px-5 py-3.5 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center gap-2.5 transition transform hover:scale-105 active:scale-95"
-      >
-        <span className="text-lg">🎁</span>
-        <div className="text-left leading-tight">
-          <div className="font-black tracking-wide">$5 FREEPLAY</div>
-          <div className="text-[10px] text-amber-100 font-semibold uppercase tracking-wider">WAITING FOR YOU</div>
-        </div>
-      </button>
 
       {/* Floating Translation Widget on Right Edge */}
       <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30">
