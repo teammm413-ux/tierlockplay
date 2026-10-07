@@ -38,9 +38,12 @@ function AdminChatContent() {
       if (data.success) {
         setConversations(data.conversations || []);
         // If no user selected yet, select first
-        if (!selectedUserId && data.conversations?.length > 0 && !initialUserId) {
-          setSelectedUserId(data.conversations[0].id);
-        }
+        setSelectedUserId((prev) => {
+          if (!prev && data.conversations?.length > 0 && !initialUserId) {
+            return data.conversations[0].id;
+          }
+          return prev;
+        });
       }
     } catch (err) {}
   };
@@ -60,12 +63,14 @@ function AdminChatContent() {
 
   useEffect(() => {
     loadConversations();
+    const interval = setInterval(loadConversations, 3000);
+    return () => clearInterval(interval);
   }, [searchQuery]);
 
   useEffect(() => {
     if (selectedUserId) {
       loadMessages(selectedUserId);
-      const interval = setInterval(() => loadMessages(selectedUserId), 5000);
+      const interval = setInterval(() => loadMessages(selectedUserId), 3000);
       return () => clearInterval(interval);
     }
   }, [selectedUserId]);
