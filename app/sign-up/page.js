@@ -4,17 +4,28 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Logo from '@/components/Logo';
-import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
 
 function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryInvite = searchParams.get('invite_code');
+
+  // Read invite / referral code from all standard query params (?ref=, ?invite_code=, ?invite=, ?code=)
+  const urlInviteCode =
+    searchParams.get('ref') ||
+    searchParams.get('invite_code') ||
+    searchParams.get('invite') ||
+    searchParams.get('code') ||
+    '';
 
   const [hasInvite, setHasInvite] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
-  const [customInviteInput, setCustomInviteInput] = useState('');
-  const [showManualInput, setShowManualInput] = useState(false);
+  const [sponsorName, setSponsorName] = useState('');
+  const [manualCodeInput, setManualCodeInput] = useState('');
+
+  const [isValidatingUrl, setIsValidatingUrl] = useState(false);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [inviteError, setInviteError] = useState('');
 
   const [formData, setFormData] = useState({
     username: '',
@@ -27,9 +38,9 @@ function SignUpContent() {
   const [captchaCode, setCaptchaCode] = useState('4345');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
 
   const refreshCaptcha = () => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -37,38 +48,97 @@ function SignUpContent() {
     setFormData((prev) => ({ ...prev, verifyCode: '' }));
   };
 
+  // If user opens a direct referral link (e.g. /sign-up?ref=VIP777), validate and go straight to Step 2
   useEffect(() => {
     refreshCaptcha();
-    if (queryInvite && queryInvite.trim()) {
-      setHasInvite(true);
-      setInviteCode(queryInvite.trim());
-    }
-  }, [queryInvite]);
 
-  const handleApplyInvite = (e) => {
+    if (urlInviteCode && urlInviteCode.trim()) {
+      const codeToTest = urlInviteCode.trim();
+      setIsValidatingUrl(true);
+      setInviteError('');
+
+      fetch(`/api/auth/validate-invite?code=${encodeURIComponent(codeToTest)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.valid) {
+            setHasInvite(true);
+            setInviteCode(data.code);
+            setSponsorName(data.sponsor || 'Official Sponsor');
+          } else {
+            setHasInvite(false);
+            setInviteError(
+              data.message || `Referral code "${codeToTest}" is invalid or expired. Please enter a valid VIP code below.`
+            );
+          }
+        })
+        .catch(() => {
+          setInviteError('Connection error while validating referral link. Please enter code manually.');
+        })
+        .finally(() => {
+          setIsValidatingUrl(false);
+        });
+    }
+  }, [urlInviteCode]);
+
+  // Handle manual invite code submission on Step 1
+  const handleValidateManualCode = async (e) => {
     e.preventDefault();
-    if (customInviteInput.trim()) {
-      setHasInvite(true);
-      setInviteCode(customInviteInput.trim());
+    setInviteError('');
+
+    const cleanInput = manualCodeInput.trim();
+    if (!cleanInput) {
+      setInviteError('Please enter an invite code to continue.');
+      return;
+    }
+
+    setIsValidatingCode(true);
+    try {
+      const res = await fetch('/api/auth/validate-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: cleanInput }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.valid) {
+        setHasInvite(true);
+        setInviteCode(data.code);
+        setSponsorName(data.sponsor || 'Official Sponsor');
+        setInviteError('');
+      } else {
+        setHasInvite(false);
+        setInviteError(data.message || 'Invalid invite code. Please enter a valid VIP invite code from your sponsor.');
+      }
+    } catch (err) {
+      setInviteError('Network error. Please try again.');
+    } finally {
+      setIsValidatingCode(false);
     }
   };
 
-  const handleSubmit = async (e) => {
+  // Handle final registration form submit on Step 2
+  const handleSubmitRegistration = async (e) => {
     e.preventDefault();
-    setErrorMsg('');
+    setFormError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setErrorMsg('Passwords do not match');
+      setFormError('Passwords do not match');
       return;
     }
 
     if (formData.verifyCode !== captchaCode) {
-      setErrorMsg('Incorrect verify code. Please enter the 4 digits shown.');
+      setFormError('Incorrect verify code. Please enter the 4 digits shown.');
       refreshCaptcha();
       return;
     }
 
-    setIsLoading(true);
+    if (!inviteCode) {
+      setFormError('Valid invite code is required to complete registration.');
+      setHasInvite(false);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -77,25 +147,25 @@ function SignUpContent() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
-          inviteCode: inviteCode || 'VIP777',
+          inviteCode: inviteCode,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        setSuccessMsg('Account registered successfully! Redirecting...');
+        setFormSuccess('Account registered successfully! Redirecting...');
         setTimeout(() => {
           router.push('/player/dashboard');
           router.refresh();
         }, 1200);
       } else {
-        setErrorMsg(data.message || 'Registration failed');
+        setFormError(data.message || 'Registration failed');
         refreshCaptcha();
       }
     } catch (err) {
-      setErrorMsg('Connection error. Please try again.');
+      setFormError('Connection error. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -113,28 +183,23 @@ function SignUpContent() {
           <div className="text-center mb-6">
             <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Create Game Wallet</h1>
             <p className="text-xs text-slate-500 mt-1">
-              {hasInvite ? `VIP Invite Code Activated: ${inviteCode}` : 'VIP Player Registration'}
+              VIP Player Registration
             </p>
             <div className="w-10 h-0.5 bg-amber-500 mx-auto mt-2 rounded-full"></div>
           </div>
 
-          {errorMsg && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+          {/* URL Referral Validation Loader */}
+          {isValidatingUrl ? (
+            <div className="py-12 text-center space-y-3">
+              <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
+              <p className="text-sm font-semibold text-slate-700">Verifying referral invite link...</p>
+              <p className="text-xs text-slate-400 font-mono">Code: {urlInviteCode}</p>
             </div>
-          )}
-
-          {successMsg && (
-            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-
-          {/* Case 1: No invite code provided */}
-          {!hasInvite ? (
-            <div className="space-y-6 text-center py-4">
+          ) : !hasInvite ? (
+            /* ============================================================
+               STEP 1: INVITE CODE GATE (Requires valid code)
+               ============================================================ */
+            <div className="space-y-6 text-center py-2">
               <p className="text-sm text-slate-600 leading-relaxed max-w-xs mx-auto">
                 Registration requires an invite code. Please contact your sponsor to get one.
               </p>
@@ -148,50 +213,94 @@ function SignUpContent() {
                 </Link>
               </div>
 
-              {/* Convenience fallback for testing */}
+              {inviteError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 flex items-start gap-2 text-left">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{inviteError}</span>
+                </div>
+              )}
+
+              {/* Code Entry Input & Continue Button matching official UI */}
               <div className="pt-4 border-t border-slate-100">
-                {!showManualInput ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowManualInput(true)}
-                      className="text-xs text-amber-600 font-semibold hover:underline"
-                    >
-                      Have an invite code? Click here
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHasInvite(true);
-                        setInviteCode('VIP777');
-                      }}
-                      className="text-[11px] text-slate-400 hover:text-slate-600"
-                    >
-                      (Or test with default code: VIP777)
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleApplyInvite} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Enter invite code (e.g. 1AZu1O)"
-                      value={customInviteInput}
-                      onChange={(e) => setCustomInviteInput(e.target.value)}
-                      className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500 font-mono"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-slate-800"
-                    >
-                      Continue
-                    </button>
-                  </form>
-                )}
+                <form onSubmit={handleValidateManualCode} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter invite code (e.g. 1AZu10)"
+                    value={manualCodeInput}
+                    onChange={(e) => {
+                      setManualCodeInput(e.target.value);
+                      if (inviteError) setInviteError('');
+                    }}
+                    className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white font-mono uppercase tracking-wider transition"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isValidatingCode || !manualCodeInput.trim()}
+                    className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shrink-0"
+                  >
+                    {isValidatingCode ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Checking...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Continue</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </form>
               </div>
             </div>
           ) : (
-            /* Case 2: Invite code present */
-            <form onSubmit={handleSubmit} className="space-y-4">
+            /* ============================================================
+               STEP 2: REGISTRATION DETAILS FORM (Opened directly via referral or valid code)
+               ============================================================ */
+            <form onSubmit={handleSubmitRegistration} className="space-y-4">
+              {/* Verified Sponsor / Invite Code Badge */}
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="truncate">
+                    <span className="text-slate-600 font-medium">VIP Code: </span>
+                    <span className="font-mono font-bold text-amber-700 tracking-wider uppercase">{inviteCode}</span>
+                    {sponsorName && (
+                      <span className="text-slate-500 text-[11px] block truncate">
+                        Sponsor: <span className="font-semibold text-slate-700">{sponsorName}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasInvite(false);
+                    setInviteCode('');
+                    setSponsorName('');
+                    setManualCodeInput('');
+                  }}
+                  className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 underline ml-2 shrink-0"
+                >
+                  Change
+                </button>
+              </div>
+
+              {formError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              {formSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{formSuccess}</span>
+                </div>
+              )}
+
               {/* Username */}
               <div>
                 <input
@@ -289,10 +398,17 @@ function SignUpContent() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md disabled:opacity-50 tracking-wide uppercase"
+                  disabled={isSubmitting}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md disabled:opacity-50 tracking-wide uppercase flex items-center justify-center gap-2"
                 >
-                  {isLoading ? 'Creating Account...' : 'Sign Up'}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Creating Account...</span>
+                    </>
+                  ) : (
+                    <span>Sign Up</span>
+                  )}
                 </button>
               </div>
 

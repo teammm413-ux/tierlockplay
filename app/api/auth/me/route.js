@@ -41,6 +41,7 @@ export async function GET(request) {
         kyc_status: user.kyc_status || 'INCOMPLETE',
         kyc_name: user.kyc_name || '',
         invite_code: user.invite_code || 'VIP777',
+        referred_by: user.referred_by || '',
         is_subscribed: !!user.is_subscribed,
         last_login_time: user.last_login_time || '2026-10-02 12:10',
         last_login_ip: user.last_login_ip || '182.190.183.135',

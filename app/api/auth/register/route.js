@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { connectToDatabase, User } from '@/lib/mongodb';
 import { signUserToken } from '@/lib/auth';
+import { checkInviteCode } from '@/app/api/auth/validate-invite/route';
 
 export async function POST(request) {
   try {
@@ -20,7 +21,23 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Password must be at least 6 characters' }, { status: 400 });
     }
 
+    // Strictly enforce valid invite code
+    if (!inviteCode || typeof inviteCode !== 'string' || !inviteCode.trim()) {
+      return NextResponse.json({
+        success: false,
+        message: 'A valid VIP invite code is required to register. Please enter your sponsor code.'
+      }, { status: 400 });
+    }
+
     await connectToDatabase();
+
+    const inviteResult = await checkInviteCode(inviteCode);
+    if (!inviteResult || !inviteResult.valid) {
+      return NextResponse.json({
+        success: false,
+        message: 'Invalid invite code. Please enter a valid VIP invite code from your sponsor.'
+      }, { status: 400 });
+    }
 
     const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
@@ -38,6 +55,24 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: 'Username is already taken' }, { status: 400 });
       }
       return NextResponse.json({ success: false, message: 'Email is already registered' }, { status: 400 });
+    }
+
+    // Generate unique 6-character referral code for new user
+    let generatedInviteCode = '';
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const codeExists = await User.findOne({ invite_code: code });
+      if (!codeExists) {
+        generatedInviteCode = code;
+        break;
+      }
+    }
+    if (!generatedInviteCode) {
+      generatedInviteCode = 'TRP' + Math.floor(100 + Math.random() * 900);
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
@@ -60,7 +95,8 @@ export async function POST(request) {
       is_phone_verified: false,
       kyc_status: 'INCOMPLETE',
       kyc_name: '',
-      invite_code: inviteCode || 'VIP777',
+      invite_code: generatedInviteCode,
+      referred_by: inviteResult.code,
       is_subscribed: true,
       last_login_time: now,
       last_login_ip: '127.0.0.1',
@@ -76,6 +112,8 @@ export async function POST(request) {
       account_status: 'Active',
       is_email_verified: false,
       is_phone_verified: false,
+      invite_code: generatedInviteCode,
+      referred_by: inviteResult.code,
     };
 
     const token = signUserToken(newUser);
