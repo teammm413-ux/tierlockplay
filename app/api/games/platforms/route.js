@@ -29,12 +29,12 @@ export async function GET(request) {
         };
       }
 
-      // Check if user has any pending deposit requests
+      // Check if user has any pending game deposit requests
       const pendingTxs = await GameTransaction.find({
         user_id: userId,
         status: 'Pending',
-        type: 'Deposit'
-      });
+      }).sort({ created_at: -1 });
+
       for (const tx of pendingTxs) {
         pendingRequestsByPlatform[tx.platform_name] = {
           order_no: tx.order_no,
@@ -42,6 +42,14 @@ export async function GET(request) {
           created_at: tx.created_at,
         };
       }
+
+      var activePendingTx = pendingTxs.length > 0 ? {
+        platform_name: pendingTxs[0].platform_name,
+        order_no: pendingTxs[0].order_no,
+        amount: pendingTxs[0].amount,
+        type: pendingTxs[0].type,
+        created_at: pendingTxs[0].created_at,
+      } : null;
     }
 
     const result = platforms.map((p) => {
@@ -69,10 +77,16 @@ export async function GET(request) {
         // Pending Load Request
         hasPendingRequest: !!pending,
         pendingAmount: pending?.amount || null,
+        pendingOrderNo: pending?.order_no || null,
       };
     });
 
-    return NextResponse.json({ success: true, platforms: result });
+    return NextResponse.json({
+      success: true,
+      platforms: result,
+      hasAnyPendingRequest: Boolean(activePendingTx),
+      activePendingRequest: activePendingTx || null,
+    });
   } catch (error) {
     console.error('get platforms error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

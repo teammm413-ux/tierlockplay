@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, User, GameTransaction, UserGameAccount } from '@/lib/mongodb';
+import { connectToDatabase, User, GameTransaction, UserGameAccount, GamePlatform } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 
 function generateOrderNo(prefix = 'GDP') {
@@ -32,9 +32,31 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Game platform name is required' }, { status: 400 });
     }
 
+    // 1. Check if platform exists and is currently active / ON
+    const platform = await GamePlatform.findOne({ name: platformName.trim() });
+    if (!platform || platform.is_active === false) {
+      return NextResponse.json({
+        success: false,
+        message: `Platform "${platformName}" is currently offline or unavailable. Please choose another game platform.`,
+      }, { status: 400 });
+    }
+
     const user = await User.findById(session.id);
     if (!user) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
+    }
+
+    // 2. CONSTRAINT: User cannot send another request while previous request is pending approval/rejection
+    const existingPending = await GameTransaction.findOne({
+      user_id: user._id.toString(),
+      status: 'Pending',
+    });
+
+    if (existingPending) {
+      return NextResponse.json({
+        success: false,
+        message: `Aap ki game request (${existingPending.platform_name} - $${Number(existingPending.amount).toFixed(2)}) pehly se Pending hai. Jab tak Admin iss request ko Approve ya Reject na karde, aap doosri request nahi bhej sakte. (Order #${existingPending.order_no})`,
+      }, { status: 400 });
     }
 
     // Check if player has enough wallet balance

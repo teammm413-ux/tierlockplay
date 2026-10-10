@@ -30,6 +30,8 @@ import {
 export default function GamePlatformsPage() {
   const [user, setUser] = useState(null);
   const [platforms, setPlatforms] = useState([]);
+  const [activePendingRequest, setActivePendingRequest] = useState(null);
+  const [hasAnyPending, setHasAnyPending] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // { type: 'deposit', platform: obj }
   const [amountInput, setAmountInput] = useState('20');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,16 +53,31 @@ export default function GamePlatformsPage() {
     try {
       const res = await fetch('/api/games/platforms');
       const data = await res.json();
-      if (data.success) setPlatforms(data.platforms || []);
+      if (data.success) {
+        setPlatforms(data.platforms || []);
+        setHasAnyPending(Boolean(data.hasAnyPendingRequest));
+        setActivePendingRequest(data.activePendingRequest || null);
+      }
     } catch (err) {}
   };
 
   useEffect(() => {
     refreshUserData();
     loadPlatforms();
+    // Fast real-time polling so user unlocks immediately when admin approves/rejects
+    const interval = setInterval(loadPlatforms, 3500);
+    return () => clearInterval(interval);
   }, []);
 
   const openDepositModal = (platform) => {
+    if (platform.hasPendingRequest) {
+      alert(`Aap ki ${platform.name} ke liye request (Order #${platform.pendingOrderNo}) pehlay se review ma hai. Jab tak Admin issay Approve ya Reject na karde, aap doosri request nahi bhej sakte.`);
+      return;
+    }
+    if (hasAnyPending) {
+      alert(`Aap ki ek request (${activePendingRequest?.platform_name} - $${Number(activePendingRequest?.amount).toFixed(2)}) pehlay se review ma hai. Jab tak Admin issay Approve ya Reject na karde, aap doosri request nahi bhej sakte.`);
+      return;
+    }
     setActiveModal({ type: 'deposit', platform });
     setAmountInput('20');
     setModalNotice({ text: '', isError: false });
@@ -165,6 +182,35 @@ export default function GamePlatformsPage() {
               </Link>
             </div>
           </div>
+
+          {/* ACTIVE PENDING REQUEST NOTICE BANNER */}
+          {hasAnyPending && activePendingRequest && (
+            <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-amber-500/40 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs shadow-[0_0_30px_rgba(245,158,11,0.08)] animate-in fade-in duration-200">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                  <Clock className="w-5 h-5 animate-spin" />
+                </div>
+                <div>
+                  <div className="font-black text-sm text-white flex items-center gap-2">
+                    <span>Active Request In Review: {activePendingRequest.platform_name}</span>
+                    <span className="bg-[#FFCC00] text-slate-950 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
+                      Pending Approval
+                    </span>
+                  </div>
+                  <p className="text-amber-200/90 mt-1 leading-relaxed text-[11px]">
+                    Order <strong>#{activePendingRequest.order_no}</strong> (${Number(activePendingRequest.amount).toFixed(2)}) is awaiting Admin approval. Jb tk yeh request Approve ya Reject na ho jaye, doosri request send nahi ki ja sakti.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/player/game-platforms/deposit-records"
+                className="shrink-0 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-bold px-4 py-2 rounded-xl border border-amber-400/30 transition flex items-center gap-1.5 text-xs"
+              >
+                <span>View Status</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
 
           {/* MY GAME ACCOUNTS & CREDENTIALS SECTION */}
           {activeAccounts.length > 0 && (
@@ -351,13 +397,32 @@ export default function GamePlatformsPage() {
                       <span>App</span>
                     </a>
 
-                    <button
-                      onClick={() => openDepositModal(p)}
-                      className="flex-1 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wide rounded-xl transition flex items-center justify-center gap-1.5 shadow-md"
-                    >
-                      <Wallet className="w-3.5 h-3.5" />
-                      <span>{p.hasAccount ? 'Load Credits' : 'Create & Load'}</span>
-                    </button>
+                    {p.hasPendingRequest ? (
+                      <button
+                        disabled
+                        className="flex-1 py-2.5 bg-amber-500/20 text-amber-300 border border-amber-500/35 font-bold text-xs uppercase tracking-wide rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed opacity-90 shadow-sm"
+                      >
+                        <Clock className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                        <span>In Review (${p.pendingAmount})</span>
+                      </button>
+                    ) : hasAnyPending ? (
+                      <button
+                        onClick={() => openDepositModal(p)}
+                        className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 border border-white/10 font-bold text-xs uppercase tracking-wide rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
+                        title="Another request is currently under review"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Queue Locked</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => openDepositModal(p)}
+                        className="flex-1 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wide rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                      >
+                        <Wallet className="w-3.5 h-3.5" />
+                        <span>{p.hasAccount ? 'Load Credits' : 'Create & Load'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -467,14 +532,16 @@ export default function GamePlatformsPage() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black py-3 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-yellow-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                  disabled={isSubmitting || hasAnyPending || activeModal?.platform?.hasPendingRequest}
+                  className="w-full bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black py-3 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-yellow-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
                       <span>Submitting Request...</span>
                     </>
+                  ) : (hasAnyPending || activeModal?.platform?.hasPendingRequest) ? (
+                    <span>Request In Review (Queue Locked)</span>
                   ) : (
                     <span>Submit Game Load Request (${amountInput || '0'})</span>
                   )}

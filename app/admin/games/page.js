@@ -166,19 +166,33 @@ export default function AdminGamesPage() {
   };
 
   const handleToggleStatus = async (game) => {
+    const nextStatus = !game.is_active;
+    const gameId = game.id || game._id;
+
+    // Optimistic UI update for instantaneous switch feel
+    setGames((prev) =>
+      prev.map((g) => ((g.id === gameId || g._id === gameId) ? { ...g, is_active: nextStatus } : g))
+    );
+
     try {
       const res = await fetch('/api/admin/games', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: game.id || game._id, is_active: !game.is_active })
+        body: JSON.stringify({ id: gameId, is_active: nextStatus })
       });
       const data = await res.json();
       if (data.success) {
-        setStatusMessage(`Game ${game.name} ${!game.is_active ? 'activated' : 'paused'}`);
-        fetchGames();
+        setStatusMessage(`Game "${game.name}" is now ${nextStatus ? 'ON (Available to players)' : 'OFF (Hidden from players)'}`);
         setTimeout(() => setStatusMessage(''), 3000);
+      } else {
+        // Rollback on failure
+        fetchGames();
+        setErrorMessage(data.message || 'Failed to update status');
       }
-    } catch (err) {}
+    } catch (err) {
+      fetchGames();
+      setErrorMessage('Network error toggling status');
+    }
   };
 
   const handleDelete = async (id, name) => {
@@ -344,15 +358,28 @@ export default function AdminGamesPage() {
                       </td>
                       <td className="px-5 py-4 text-center">
                         <button
+                          type="button"
                           onClick={() => handleToggleStatus(game)}
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition flex items-center gap-1 mx-auto border ${
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer border ${
                             game.is_active
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                              : 'bg-white/5 text-slate-500 border-white/10'
+                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 shadow-sm'
+                              : 'bg-rose-500/10 border-rose-500/30 text-rose-300 hover:bg-rose-500/20'
                           }`}
+                          title={game.is_active ? 'Game is ON (Visible to players) - Click to turn OFF' : 'Game is OFF (Hidden from players) - Click to turn ON'}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${game.is_active ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
-                          <span>{game.is_active ? 'Active' : 'Disabled'}</span>
+                          {/* Toggle switch visual */}
+                          <span
+                            className={`relative inline-block w-8 h-4.5 rounded-full transition-colors duration-200 ease-in-out ${
+                              game.is_active ? 'bg-emerald-500' : 'bg-slate-700'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block w-3.5 h-3.5 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out mt-0.5 ${
+                                game.is_active ? 'translate-x-4' : 'translate-x-0.5'
+                              }`}
+                            />
+                          </span>
+                          <span className="tracking-wide">{game.is_active ? 'ON' : 'OFF'}</span>
                         </button>
                       </td>
                       <td className="px-5 py-4 text-right">
@@ -365,7 +392,7 @@ export default function AdminGamesPage() {
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDeleteGame(game.id, game.name)}
+                            onClick={() => handleDelete(game.id, game.name)}
                             className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition"
                             title="Delete Platform"
                           >
@@ -571,17 +598,34 @@ export default function AdminGamesPage() {
                   />
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    checked={form.is_active}
-                    onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                    className="w-4 h-4 rounded text-amber-600 focus:ring-0 border-slate-300"
-                  />
-                  <label htmlFor="is_active" className="text-xs text-slate-700 font-semibold cursor-pointer">
-                    Enable game platform immediately for players
-                  </label>
+                <div className="bg-[#181922] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>Platform Status:</span>
+                      <span className={form.is_active ? 'text-emerald-400' : 'text-rose-400'}>
+                        {form.is_active ? 'ON (Active & Available)' : 'OFF (Hidden & Offline)'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      {form.is_active
+                        ? 'Players can view, download, and request credits for this game.'
+                        : 'Platform will be hidden from players and requests will be blocked.'}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, is_active: !form.is_active })}
+                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      form.is_active ? 'bg-emerald-500' : 'bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        form.is_active ? 'translate-x-6' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
