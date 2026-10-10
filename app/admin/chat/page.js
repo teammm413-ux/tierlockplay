@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AdminSidebar from '@/components/AdminSidebar';
+import { playNotificationSound } from '@/lib/sound';
 import {
   MessageSquare,
   Search,
@@ -32,6 +33,7 @@ function AdminChatContent() {
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
+  const lastActiveMsgIdRef = useRef(null);
 
   // Load conversations list with search
   const loadConversations = async () => {
@@ -61,7 +63,19 @@ function AdminChatContent() {
       const res = await fetch(`/api/admin/chat?userId=${userId}`);
       const data = await res.json();
       if (data.success) {
-        setMessages(data.messages || []);
+        const msgs = data.messages || [];
+        if (msgs.length > 0) {
+          const lastMsg = msgs[msgs.length - 1];
+          if (
+            lastActiveMsgIdRef.current !== null &&
+            lastActiveMsgIdRef.current !== lastMsg.id &&
+            lastMsg.sender_type === 'user'
+          ) {
+            playNotificationSound('admin_request');
+          }
+          lastActiveMsgIdRef.current = lastMsg.id;
+        }
+        setMessages(msgs);
         setActiveUser(data.user || null);
       }
     } catch (err) {}
@@ -74,6 +88,7 @@ function AdminChatContent() {
   }, [searchQuery]);
 
   useEffect(() => {
+    lastActiveMsgIdRef.current = null;
     if (selectedUserId) {
       loadMessages(selectedUserId);
       const interval = setInterval(() => loadMessages(selectedUserId), 3000);

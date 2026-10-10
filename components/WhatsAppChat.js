@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare, X, CheckCheck, Bell, ChevronRight, UserCheck, ShieldCheck } from 'lucide-react';
+import { Send, MessageSquare, X, CheckCheck, Bell, ChevronRight, UserCheck, ShieldCheck, Sparkles } from 'lucide-react';
+import { playNotificationSound } from '@/lib/sound';
 
 export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
@@ -13,6 +14,7 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
   const [bannerAlert, setBannerAlert] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const lastNotifiedMsgRef = useRef('');
 
   const handleOpen = () => {
     setInternalIsOpen(true);
@@ -41,8 +43,13 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
       const data = await res.json();
       if (data.success && data.hasUnread) {
         setUnreadCount(data.count);
-        // Display notification banner if user hasn't opened chat
+        // Play notification sound & display toast if user hasn't opened chat
         if (!isOpen) {
+          const msgKey = `${data.count}_${data.latestMessage}`;
+          if (lastNotifiedMsgRef.current !== msgKey) {
+            lastNotifiedMsgRef.current = msgKey;
+            playNotificationSound('user_message');
+          }
           setBannerAlert({
             count: data.count,
             message: data.latestMessage,
@@ -128,38 +135,62 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
 
   return (
     <>
-      {/* 1. Prominent Top Alert Banner if Admin messaged user and chat is not open */}
+      {/* 1. Sleek Floating Toast Card if Admin messaged user and chat is not open */}
       {bannerAlert && !isOpen && (
-        <div className="fixed top-14 left-0 right-0 z-50 px-4 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-2xl flex items-center justify-between animate-bounce-short">
-          <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
-                <Bell className="w-4 h-4 text-emerald-200" />
+        <div className="fixed top-20 right-4 sm:right-6 z-50 max-w-sm w-[calc(100vw-32px)] sm:w-96 bg-[#0c1319]/95 backdrop-blur-xl border border-emerald-500/40 rounded-2xl p-4 shadow-[0_15px_40px_rgba(0,0,0,0.85)] animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-start gap-3">
+            {/* Live Agent Avatar */}
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-lg border border-emerald-300/30">
+                <UserCheck className="w-5 h-5 text-white" />
               </div>
-              <div className="text-sm">
-                <span className="font-bold text-emerald-200">{bannerAlert.sender}: </span>
-                <span className="text-white/95 font-medium">"{bannerAlert.message}"</span>
-              </div>
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#0c1319] rounded-full animate-ping"></span>
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#0c1319] rounded-full"></span>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  handleOpen();
-                  setBannerAlert(null);
-                }}
-                className="bg-white text-emerald-950 font-bold px-4 py-1.5 rounded-full text-xs uppercase tracking-wider hover:bg-emerald-50 transition shadow-md flex items-center gap-1 cursor-pointer"
-              >
-                <span>Reply to Agent</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setBannerAlert(null)}
-                className="text-white/80 hover:text-white p-1 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+
+            {/* Message Details */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-bold text-white truncate">
+                    {bannerAlert.sender}
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded-full font-semibold border border-emerald-500/30">
+                    Support
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBannerAlert(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition cursor-pointer"
+                  title="Dismiss notification"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed bg-white/[0.03] p-2 rounded-lg border border-white/5">
+                "{bannerAlert.message}"
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
+                <span className="text-[10px] text-emerald-400/80 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  New Message
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpen();
+                    setBannerAlert(null);
+                  }}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold px-3 py-1.5 rounded-full text-[11px] transition shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-1 cursor-pointer active:scale-95"
+                >
+                  <span>Reply</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

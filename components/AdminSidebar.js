@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Logo from './Logo';
+import { playNotificationSound } from '@/lib/sound';
 import {
   LayoutDashboard,
   ArrowDownLeft,
@@ -23,6 +24,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const prevTotalRef = useRef(null);
   const [stats, setStats] = useState({
     pendingDeposits: 0,
     pendingWithdrawals: 0,
@@ -36,11 +38,23 @@ export default function AdminSidebar() {
         const res = await fetch('/api/admin/stats');
         const data = await res.json();
         if (data.success && data.stats) {
+          const deposits = data.stats.pendingDepositsCount || 0;
+          const withdrawals = data.stats.pendingWithdrawalsCount || 0;
+          const games = data.stats.pendingGameTransactionsCount || 0;
+          const chat = data.stats.unreadChatMessages || 0;
+          const currentTotal = deposits + withdrawals + games + chat;
+
+          // Play crisp casino alert sound whenever a new request or message arrives
+          if (prevTotalRef.current !== null && currentTotal > prevTotalRef.current) {
+            playNotificationSound('admin_request');
+          }
+          prevTotalRef.current = currentTotal;
+
           setStats({
-            pendingDeposits: data.stats.pendingDepositsCount || 0,
-            pendingWithdrawals: data.stats.pendingWithdrawalsCount || 0,
-            pendingGameTransactions: data.stats.pendingGameTransactionsCount || 0,
-            unreadChat: data.stats.unreadChatMessages || 0,
+            pendingDeposits: deposits,
+            pendingWithdrawals: withdrawals,
+            pendingGameTransactions: games,
+            unreadChat: chat,
           });
         }
       } catch (err) {
@@ -49,7 +63,7 @@ export default function AdminSidebar() {
     };
 
     fetchCounters();
-    // Fast real-time polling every 4 seconds so badges update live
+    // Fast real-time polling every 4 seconds so badges and alerts update live
     const interval = setInterval(fetchCounters, 4000);
     return () => clearInterval(interval);
   }, []);
