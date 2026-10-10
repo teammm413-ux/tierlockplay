@@ -49,6 +49,8 @@ export async function GET(request) {
       payment_token: d.payment_token || '',
       gateway_order_id: d.gateway_order_id || '',
       redirect_url: d.redirect_url || '',
+      admin_notes: d.admin_notes || '',
+      failure_reason: d.failure_reason || '',
       created_at: d.created_at,
       expires_at: d.expires_at || null,
       processed_at: d.processed_at || '',
@@ -70,7 +72,8 @@ export async function POST(request) {
 
     await connectToDatabase();
     const body = await request.json();
-    const { id, action, reason } = body;
+    const { id, action, reason, note } = body;
+    const finalNote = (note || reason || '').trim();
 
     if (!id || !action) {
       return NextResponse.json({ success: false, message: 'ID and action are required' }, { status: 400 });
@@ -108,6 +111,7 @@ export async function POST(request) {
       deposit.status = 'Approved';
       deposit.wallet_balance_before = balanceBefore;
       deposit.wallet_balance_after = balanceAfter;
+      deposit.admin_notes = finalNote || 'Deposit verified and credited by admin';
       deposit.processed_at = now;
       await deposit.save();
 
@@ -115,7 +119,7 @@ export async function POST(request) {
       await ChromeNotification.create({
         user_id: deposit.user_id,
         title: 'Deposit Approved! 💰',
-        message: `Your deposit of $${deposit.received_amount.toFixed(2)} via ${deposit.payment_method} has been credited to your wallet.`,
+        message: `Your deposit of $${deposit.received_amount.toFixed(2)} via ${deposit.payment_method} has been credited. ${finalNote ? `Note: ${finalNote}` : ''}`,
       });
 
       return NextResponse.json({
@@ -124,9 +128,17 @@ export async function POST(request) {
       });
     } else if (action === 'reject') {
       deposit.status = 'Rejected';
+      deposit.admin_notes = finalNote || 'Deposit rejected by admin';
+      deposit.failure_reason = finalNote || 'Rejected by admin';
       deposit.processed_at = now;
-      if (reason) deposit.transaction_proof = `Reason: ${reason}`;
+      if (finalNote) deposit.transaction_proof = `Reason: ${finalNote}`;
       await deposit.save();
+
+      await ChromeNotification.create({
+        user_id: deposit.user_id,
+        title: 'Deposit Rejected ⚠️',
+        message: `Your deposit #${deposit.order_no} of $${deposit.paid_amount.toFixed(2)} was rejected. Reason: ${finalNote || 'Please contact support'}`,
+      });
 
       return NextResponse.json({
         success: true,

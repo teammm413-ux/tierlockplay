@@ -68,6 +68,7 @@ export async function GET(request) {
         game_password: r.game_password || '',
         amount: r.amount,
         status: r.status,
+        admin_notes: r.admin_notes || '',
         failure_reason: r.failure_reason || '',
         wallet_balance_before: r.wallet_balance_before || 0,
         wallet_balance_after: r.wallet_balance_after || 0,

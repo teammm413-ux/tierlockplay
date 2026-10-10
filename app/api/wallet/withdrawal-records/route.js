@@ -62,6 +62,7 @@ export async function GET(request) {
         service_fee: r.service_fee || 0.0,
         received_amount: r.received_amount,
         status: r.status,
+        admin_notes: r.admin_notes || '',
         failure_reason: r.failure_reason || '',
         wallet_balance_before: r.wallet_balance_before || 0,
         wallet_balance_after: r.wallet_balance_after || 0,

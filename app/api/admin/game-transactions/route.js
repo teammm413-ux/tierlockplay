@@ -169,6 +169,13 @@ export async function POST(request) {
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 
+      // Notification
+      await ChromeNotification.create({
+        user_id: tx.user_id,
+        title: 'Game Account Loaded! 🎮',
+        message: `Your ${tx.platform_name} account has been loaded with $${tx.amount.toFixed(2)}! Login username: ${gameUsername.trim()}`,
+      });
+
       return NextResponse.json({
         success: true,
         message: `Successfully loaded $${tx.amount.toFixed(2)} to ${tx.platform_name} for ${user.username}! $${tx.amount.toFixed(2)} deducted from player wallet. Credentials saved.`,
@@ -192,10 +199,18 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: `Transaction already processed (Status: ${tx.status})` }, { status: 400 });
       }
 
+      const noteText = (rejectReason || adminNotes || 'Declined by Administrator').trim();
       tx.status = 'Rejected';
-      tx.failure_reason = rejectReason || 'Declined by Administrator';
+      tx.failure_reason = noteText;
+      tx.admin_notes = noteText;
       tx.updated_at = new Date();
       await tx.save();
+
+      await ChromeNotification.create({
+        user_id: tx.user_id,
+        title: 'Game Deposit Declined ⚠️',
+        message: `Your deposit request for ${tx.platform_name} ($${tx.amount.toFixed(2)}) was rejected. Reason: ${noteText}`,
+      });
 
       return NextResponse.json({
         success: true,

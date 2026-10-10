@@ -462,8 +462,14 @@ export default function WithdrawalRecordsPage() {
                               <span>{r.status}</span>
                             </span>
                           </td>
-                          <td className="py-4 px-4 text-rose-400 text-xs font-semibold whitespace-nowrap">
-                            {r.failure_reason || '-'}
+                          <td className="py-4 px-4 text-xs font-semibold whitespace-nowrap">
+                            {r.failure_reason ? (
+                              <span className="text-rose-400" title={r.failure_reason}>{r.failure_reason}</span>
+                            ) : r.admin_notes ? (
+                              <span className="text-emerald-400" title={r.admin_notes}>{r.admin_notes}</span>
+                            ) : (
+                              <span className="text-slate-500">-</span>
+                            )}
                           </td>
                           <td className="py-4 px-4 text-slate-400 font-mono">
                             ${Number(r.wallet_balance_before || 0).toFixed(2)}

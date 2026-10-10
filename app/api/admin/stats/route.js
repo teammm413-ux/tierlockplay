@@ -61,6 +61,7 @@ export async function GET(request) {
     const pendingWithdrawalsSum = pendingWithAgg.length > 0 ? pendingWithAgg[0].sum : 0;
 
     const totalGameTransactions = await GameTransaction.countDocuments({});
+    const pendingGameTransactionsCount = await GameTransaction.countDocuments({ status: 'Pending' });
     const unreadChatMessages = await ChatMessage.countDocuments({ sender_type: 'user', is_read_by_admin: false });
     const totalAdmins = await Admin.countDocuments({});
 
@@ -109,6 +110,7 @@ export async function GET(request) {
         pendingWithdrawalsCount: pendingWithCount,
         pendingWithdrawalsSum: parseFloat(pendingWithdrawalsSum.toFixed(2)),
         totalGameTransactions,
+        pendingGameTransactionsCount,
         unreadChatMessages,
         totalAdmins,
       },

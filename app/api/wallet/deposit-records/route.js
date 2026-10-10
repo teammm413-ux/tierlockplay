@@ -65,6 +65,8 @@ export async function GET(request) {
         wallet_balance_before: r.wallet_balance_before || 0,
         wallet_balance_after: r.wallet_balance_after || 0,
         transaction_proof: r.transaction_proof || '',
+        admin_notes: r.admin_notes || '',
+        failure_reason: r.failure_reason || '',
         created_at: r.created_at ? new Date(r.created_at).toISOString().replace('T', ' ').substring(0, 19) : '',
         operation_time: r.processed_at
           ? new Date(r.processed_at).toISOString().replace('T', ' ').substring(0, 19)

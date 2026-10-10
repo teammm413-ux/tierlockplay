@@ -196,18 +196,18 @@ export default function AdminGamesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex font-sans">
+    <div className="min-h-screen bg-[#07080b] text-slate-100 flex font-sans">
       <AdminSidebar />
 
-      <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto space-y-6 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 overflow-y-auto pt-16 lg:pt-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <Gamepad2 className="w-6 h-6 text-amber-600" />
+            <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+              <Gamepad2 className="w-6 h-6 text-[#FFCC00]" />
               <span>Game Platforms Management</span>
             </h1>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               Add, update, or remove supported sweepstakes games. Real images, RTPs, and download links will be displayed to players.
             </p>
           </div>
@@ -215,31 +215,31 @@ export default function AdminGamesPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleOpenAdd}
-              className="bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition active:scale-95"
+              className="bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-yellow-500/20 transition active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Add New Game</span>
             </button>
             <button
               onClick={fetchGames}
-              className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl transition shadow-xs"
+              className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl transition"
               title="Refresh List"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4 text-[#FFCC00]" />
             </button>
           </div>
         </div>
 
         {/* Status Toast */}
         {statusMessage && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2.5 shadow-xs animate-fadeIn">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2.5 shadow-lg animate-fadeIn">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{statusMessage}</span>
           </div>
         )}
 
         {/* Search Bar & Quick Filters */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#101117] p-4 rounded-2xl border border-white/10 shadow-lg">
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
             <input
@@ -247,27 +247,27 @@ export default function AdminGamesPage() {
               placeholder="Search by game name, category..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white"
+              className="w-full bg-[#07080b] border border-white/10 pl-10 pr-4 py-2 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#FFCC00]"
             />
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
             <span>Total Platforms:</span>
-            <span className="bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-full font-bold border border-slate-200">
+            <span className="bg-white/10 text-[#FFCC00] px-2.5 py-0.5 rounded-full font-bold border border-white/10">
               {games.length}
             </span>
-            <span className="text-slate-300">|</span>
-            <span className="text-emerald-700 font-bold">
+            <span className="text-slate-600">|</span>
+            <span className="text-emerald-400 font-bold">
               {games.filter(g => g.is_active).length} Active
             </span>
           </div>
         </div>
 
         {/* Games Table */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs">
+        <div className="bg-[#101117] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider font-bold border-b border-slate-200">
+              <thead className="bg-[#181922] text-slate-300 uppercase tracking-wider font-bold text-[11px] border-b border-white/10">
                 <tr>
                   <th className="px-5 py-3.5 w-12">#</th>
                   <th className="px-5 py-3.5">Logo</th>
@@ -280,26 +280,26 @@ export default function AdminGamesPage() {
                   <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/5">
                 {isLoading ? (
                   <tr>
-                    <td colSpan="9" className="text-center py-12 text-slate-400">
-                      <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-amber-500" />
+                    <td colSpan="9" className="text-center py-12 text-slate-500">
+                      <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#FFCC00]" />
                       Loading game platforms...
                     </td>
                   </tr>
                 ) : games.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="text-center py-12 text-slate-400">
+                    <td colSpan="9" className="text-center py-12 text-slate-500">
                       No game platforms found. Click &quot;Add New Game&quot; above to create one.
                     </td>
                   </tr>
                 ) : (
                   games.map((game, idx) => (
-                    <tr key={game.id} className="hover:bg-slate-50/70 transition">
+                    <tr key={game.id} className="hover:bg-white/[0.03] transition">
                       <td className="px-5 py-4 text-slate-400 font-mono">{idx + 1}</td>
                       <td className="px-5 py-4">
-                        <div className="w-12 h-12 rounded-xl bg-slate-900 overflow-hidden border border-slate-200 flex items-center justify-center shadow-xs">
+                        <div className="w-12 h-12 rounded-xl bg-slate-900 overflow-hidden border border-white/10 flex items-center justify-center shadow-md">
                           {game.logo_url && game.logo_url.startsWith('/') ? (
                             <img
                               src={game.logo_url}
@@ -316,12 +316,12 @@ export default function AdminGamesPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="font-bold text-slate-900 text-sm">{game.name}</div>
-                        <div className="text-[11px] text-slate-500 truncate max-w-xs">{game.tagline || 'Sweepstakes Arcade'}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">slug: {game.slug}</div>
+                        <div className="font-bold text-white text-sm">{game.name}</div>
+                        <div className="text-[11px] text-slate-400 truncate max-w-xs">{game.tagline || 'Sweepstakes Arcade'}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">slug: {game.slug}</div>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-[11px] border border-slate-200 font-medium">
+                        <span className="bg-white/5 text-slate-300 px-2.5 py-1 rounded-md text-[11px] border border-white/10 font-medium">
                           {game.category}
                         </span>
                       </td>
@@ -330,16 +330,16 @@ export default function AdminGamesPage() {
                           href={game.download_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700 flex items-center gap-1 max-w-[180px] truncate underline text-[11px] font-medium"
+                          className="text-[#FFCC00] hover:underline flex items-center gap-1 max-w-[180px] truncate text-[11px] font-medium"
                         >
                           <span className="truncate">{game.download_url}</span>
                           <ExternalLink className="w-3 h-3 shrink-0" />
                         </a>
                       </td>
-                      <td className="px-5 py-4 font-mono font-bold text-emerald-700">
+                      <td className="px-5 py-4 font-mono font-black text-emerald-400">
                         ${game.min_deposit || 10}
                       </td>
-                      <td className="px-5 py-4 font-mono text-amber-700 font-bold">
+                      <td className="px-5 py-4 font-mono text-[#FFCC00] font-black">
                         {game.rtp || '96.5%'}
                       </td>
                       <td className="px-5 py-4 text-center">
@@ -347,11 +347,11 @@ export default function AdminGamesPage() {
                           onClick={() => handleToggleStatus(game)}
                           className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition flex items-center gap-1 mx-auto border ${
                             game.is_active
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                              : 'bg-white/5 text-slate-500 border-white/10'
                           }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${game.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${game.is_active ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
                           <span>{game.is_active ? 'Active' : 'Disabled'}</span>
                         </button>
                       </td>
@@ -359,14 +359,14 @@ export default function AdminGamesPage() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleOpenEdit(game)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition"
                             title="Edit Platform"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDelete(game.id || game._id, game.name)}
-                            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            onClick={() => handleDeleteGame(game.id, game.name)}
+                            className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition"
                             title="Delete Platform"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -383,25 +383,25 @@ export default function AdminGamesPage() {
 
         {/* Add/Edit Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-fadeIn">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#101117] border border-white/10 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-fadeIn text-white">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <Gamepad2 className="w-5 h-5 text-amber-600" />
-                  <h3 className="text-base font-bold text-slate-900">
+                  <Gamepad2 className="w-5 h-5 text-[#FFCC00]" />
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">
                     {editingGame ? `Edit Game: ${editingGame.name}` : 'Add New Game Platform'}
                   </h3>
                 </div>
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+                  className="p-1 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white"
                 >
                   ✕
                 </button>
               </div>
 
               {errorMessage && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl font-medium">
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl font-medium">
                   {errorMessage}
                 </div>
               )}

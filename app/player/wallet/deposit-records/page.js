@@ -493,6 +493,19 @@ export default function DepositRecordsPage() {
                               {isApproved && <CheckCircle2 className="w-3 h-3" />}
                               <span>{r.status}</span>
                             </span>
+                            {(r.failure_reason || r.admin_notes) && (
+                              <div className="mt-1 text-[10px] max-w-[170px]">
+                                {r.failure_reason ? (
+                                  <span className="text-rose-400 font-medium block truncate" title={r.failure_reason}>
+                                    Reason: {r.failure_reason}
+                                  </span>
+                                ) : r.admin_notes ? (
+                                  <span className="text-slate-400 block truncate" title={r.admin_notes}>
+                                    Note: {r.admin_notes}
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
                           </td>
                           <td className="py-4 px-4 text-slate-400 font-mono">
                             ${Number(r.wallet_balance_before || 0).toFixed(2)}

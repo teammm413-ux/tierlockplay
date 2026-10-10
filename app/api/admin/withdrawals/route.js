@@ -43,6 +43,7 @@ export async function GET(request) {
       service_fee: w.service_fee || 0,
       received_amount: w.received_amount,
       status: w.status,
+      admin_notes: w.admin_notes || '',
       failure_reason: w.failure_reason || '',
       wallet_balance_before: w.wallet_balance_before || 0,
       wallet_balance_after: w.wallet_balance_after || 0,
@@ -66,7 +67,8 @@ export async function POST(request) {
 
     await connectToDatabase();
     const body = await request.json();
-    const { id, action, reason } = body;
+    const { id, action, reason, note } = body;
+    const finalNote = (note || reason || '').trim();
 
     if (!id || !action) {
       return NextResponse.json({ success: false, message: 'ID and action are required' }, { status: 400 });
@@ -92,6 +94,7 @@ export async function POST(request) {
 
     if (action === 'approve') {
       item.status = 'Approved';
+      item.admin_notes = finalNote || 'Payout processed and sent';
       item.processed_at = now;
       await item.save();
 
@@ -99,7 +102,7 @@ export async function POST(request) {
       await ChromeNotification.create({
         user_id: item.user_id,
         title: 'Withdrawal Sent! 💸',
-        message: `Your payout of $${item.received_amount.toFixed(2)} (${item.payment_method}: ${item.payment_info}) has been processed and sent!`,
+        message: `Your payout of $${item.received_amount.toFixed(2)} (${item.payment_method}: ${item.payment_info}) has been processed! ${finalNote ? `Note: ${finalNote}` : ''}`,
       });
 
       return NextResponse.json({
@@ -114,14 +117,15 @@ export async function POST(request) {
       }
 
       item.status = 'Rejected';
-      item.failure_reason = reason || 'Rejected by Admin. Funds refunded to wallet balance.';
+      item.admin_notes = finalNote || 'Rejected by Admin. Funds refunded to wallet balance.';
+      item.failure_reason = finalNote || 'Rejected by Admin. Funds refunded to wallet balance.';
       item.processed_at = now;
       await item.save();
 
       await ChromeNotification.create({
         user_id: item.user_id,
         title: 'Withdrawal Update',
-        message: `Your withdrawal #${item.order_no} was rejected (${reason || 'Check details'}). $${item.amount.toFixed(2)} has been refunded to your wallet.`,
+        message: `Your withdrawal #${item.order_no} was rejected (${finalNote || 'Check details'}). $${item.amount.toFixed(2)} refunded to your wallet.`,
       });
 
       return NextResponse.json({
