@@ -55,7 +55,7 @@ export async function POST(request) {
     if (existingPending) {
       return NextResponse.json({
         success: false,
-        message: `Aap ki game request (${existingPending.platform_name} - $${Number(existingPending.amount).toFixed(2)}) pehly se Pending hai. Jab tak Admin iss request ko Approve ya Reject na karde, aap doosri request nahi bhej sakte. (Order #${existingPending.order_no})`,
+        message: `Your game deposit request for ${existingPending.platform_name} ($${Number(existingPending.amount).toFixed(2)}) is currently pending review. You cannot submit another request until this request is approved or rejected. (Order #${existingPending.order_no})`,
       }, { status: 400 });
     }
 

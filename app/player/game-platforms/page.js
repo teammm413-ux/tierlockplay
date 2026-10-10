@@ -71,11 +71,11 @@ export default function GamePlatformsPage() {
 
   const openDepositModal = (platform) => {
     if (platform.hasPendingRequest) {
-      alert(`Aap ki ${platform.name} ke liye request (Order #${platform.pendingOrderNo}) pehlay se review ma hai. Jab tak Admin issay Approve ya Reject na karde, aap doosri request nahi bhej sakte.`);
+      alert(`Your request for ${platform.name} (Order #${platform.pendingOrderNo}) is currently under review. You cannot submit another request until this request is approved or rejected by the admin.`);
       return;
     }
     if (hasAnyPending) {
-      alert(`Aap ki ek request (${activePendingRequest?.platform_name} - $${Number(activePendingRequest?.amount).toFixed(2)}) pehlay se review ma hai. Jab tak Admin issay Approve ya Reject na karde, aap doosri request nahi bhej sakte.`);
+      alert(`Your request (${activePendingRequest?.platform_name} - $${Number(activePendingRequest?.amount).toFixed(2)}) is currently under review. You cannot submit another request until this request is approved or rejected by the admin.`);
       return;
     }
     setActiveModal({ type: 'deposit', platform });
@@ -198,7 +198,7 @@ export default function GamePlatformsPage() {
                     </span>
                   </div>
                   <p className="text-amber-200/90 mt-1 leading-relaxed text-[11px]">
-                    Order <strong>#{activePendingRequest.order_no}</strong> (${Number(activePendingRequest.amount).toFixed(2)}) is awaiting Admin approval. Jb tk yeh request Approve ya Reject na ho jaye, doosri request send nahi ki ja sakti.
+                    Order <strong>#{activePendingRequest.order_no}</strong> (${Number(activePendingRequest.amount).toFixed(2)}) is awaiting Admin review. You cannot submit another request until this request has been approved or rejected.
                   </p>
                 </div>
               </div>
