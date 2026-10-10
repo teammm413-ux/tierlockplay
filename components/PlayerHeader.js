@@ -61,7 +61,7 @@ export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLo
   const balance = Number(user?.wallet_balance || 0).toFixed(2);
 
   return (
-    <header className="h-14 bg-[#0b1728] border-b border-[#15233a] px-4 sm:px-6 flex items-center justify-between z-30 select-none">
+    <header className="h-14 bg-[#0a0b10] border-b border-white/10 px-4 sm:px-6 flex items-center justify-between z-30 select-none">
       {/* Left: Sidebar Toggle + Balance Chip */}
       <div className="flex items-center gap-4">
         <button
@@ -72,8 +72,8 @@ export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLo
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Balance Chip: Green container with wallet icon and balance */}
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#064e3b]/30 border border-[#059669]/40 text-[#10b981] font-mono font-bold text-xs shadow-sm">
+        {/* Balance Chip: Gold container with wallet icon and balance */}
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#FFCC00]/10 border border-[#FFCC00]/30 text-[#FFCC00] font-mono font-bold text-xs shadow-[0_0_15px_rgba(255,204,0,0.1)]">
           <Wallet className="w-3.5 h-3.5" />
           <span>${balance}</span>
         </div>

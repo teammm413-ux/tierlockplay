@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Vegas Vault | The Gold Standard USA Casino & Game Wallet',
-  description: 'Instant deposits, lightning withdrawals, and seamless multi-platform sweepstakes gaming. Play Juwa, Fire Kirin, Orion Stars, and more.',
+  title: 'TierlockPlay | When Trust Matters, Choose Tierlock',
+  description: 'TierlockPlay (tierlockplay.com) - The Premier USA Sweepstakes Casino & Game Wallet. Instant deposits & lightning cashouts for Juwa, Fire Kirin, Orion Stars, Game Vault, and more.',
   icons: {
     icon: '/favicon.ico',
   },

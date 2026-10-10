@@ -68,13 +68,13 @@ export default function PlayerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f4f9] text-slate-800 flex">
-      {/* Left Sidebar matching Screenshot image copy 3 */}
+    <div className="min-h-screen bg-[#07080b] text-slate-100 flex">
+      {/* Left Sidebar */}
       <Sidebar user={user} />
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
-        {/* Top Header matching Screenshot */}
+        {/* Top Header */}
         <PlayerHeader
           user={user}
           onOpenChat={() => setIsChatOpen(true)}
@@ -83,122 +83,122 @@ export default function PlayerDashboard() {
 
         {/* Content Area */}
         <main className="flex-1 p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-6">
-          {/* Welcome Card matching Screenshot image copy 3 */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-6">
-              Welcome back, {username}!
+          {/* Welcome Card */}
+          <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 shadow-sm border border-white/10">
+            <h1 className="text-xl sm:text-2xl font-black text-white mb-6 uppercase tracking-tight">
+              Welcome back, <span className="text-[#FFCC00]">{username}</span>!
             </h1>
 
             {/* Inner Details Container */}
-            <div className="bg-[#f8fafc] rounded-2xl p-6 border border-slate-100 divide-y divide-slate-200/70">
+            <div className="bg-[#181922] rounded-2xl p-6 border border-white/5 divide-y divide-white/10">
               <div className="flex items-center justify-between py-3 first:pt-0">
-                <span className="text-xs sm:text-sm text-slate-500 font-medium">Last Login Time</span>
-                <span className="text-xs sm:text-sm text-slate-900 font-bold font-mono">{lastLoginTime}</span>
+                <span className="text-xs sm:text-sm text-slate-400 font-medium">Last Login Time</span>
+                <span className="text-xs sm:text-sm text-slate-200 font-bold font-mono">{lastLoginTime}</span>
               </div>
               <div className="flex items-center justify-between py-3">
-                <span className="text-xs sm:text-sm text-slate-500 font-medium">Last Login IP</span>
-                <span className="text-xs sm:text-sm text-slate-900 font-bold font-mono">{lastLoginIp}</span>
+                <span className="text-xs sm:text-sm text-slate-400 font-medium">Last Login IP</span>
+                <span className="text-xs sm:text-sm text-slate-200 font-bold font-mono">{lastLoginIp}</span>
               </div>
               <div className="flex items-center justify-between py-3 last:pb-0">
-                <span className="text-xs sm:text-sm text-slate-500 font-medium">Device</span>
-                <span className="text-xs sm:text-sm text-slate-900 font-bold">{lastLoginDevice}</span>
+                <span className="text-xs sm:text-sm text-slate-400 font-medium">Device</span>
+                <span className="text-xs sm:text-sm text-slate-200 font-bold">{lastLoginDevice}</span>
               </div>
             </div>
           </div>
 
-          {/* 4 Stat Cards Grid matching Screenshot image copy 3 */}
+          {/* 4 Stat Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Card 1: Wallet Balance */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 hover:shadow-md transition">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
-                <span className="w-5 h-5 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="bg-[#101117] rounded-3xl p-6 border border-[#FFCC00]/30 hover:border-[#FFCC00] transition shadow-[0_0_25px_rgba(255,204,0,0.06)]">
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
+                <span className="w-6 h-6 rounded-lg bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center shrink-0">
                   <Wallet className="w-3.5 h-3.5" />
                 </span>
                 <span>Wallet Balance</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-3 font-mono">
+              <div className="text-2xl sm:text-3xl font-black text-[#FFCC00] mt-3 font-mono drop-shadow-[0_0_10px_rgba(255,204,0,0.3)]">
                 ${balance}
               </div>
             </div>
 
             {/* Card 2: Username */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 hover:shadow-md transition">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
-                <span className="w-5 h-5 rounded bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="bg-[#101117] rounded-3xl p-6 border border-white/10 hover:border-[#FFCC00]/40 transition">
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
+                <span className="w-6 h-6 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0">
                   <UserIcon className="w-3.5 h-3.5" />
                 </span>
                 <span>Username</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-3 truncate">
+              <div className="text-2xl sm:text-3xl font-black text-white mt-3 truncate">
                 {username}
               </div>
             </div>
 
             {/* Card 3: Account Status */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 hover:shadow-md transition">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
-                <span className="w-5 h-5 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="bg-[#101117] rounded-3xl p-6 border border-white/10 hover:border-[#FFCC00]/40 transition">
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
+                <span className="w-6 h-6 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                 </span>
                 <span>Account Status</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-3">
+              <div className="text-2xl sm:text-3xl font-black text-emerald-400 mt-3">
                 {accountStatus}
               </div>
             </div>
 
             {/* Card 4: Platforms */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 hover:shadow-md transition">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
-                <span className="w-5 h-5 rounded bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+            <div className="bg-[#101117] rounded-3xl p-6 border border-white/10 hover:border-[#FFCC00]/40 transition">
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
+                <span className="w-6 h-6 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
                   <Gamepad2 className="w-3.5 h-3.5" />
                 </span>
                 <span>Platforms</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-3 font-mono">
+              <div className="text-2xl sm:text-3xl font-black text-white mt-3 font-mono">
                 {platformCount}
               </div>
             </div>
           </div>
 
           {/* VIP Referral & Invite Program Card */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80">
+          <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/25 shadow-[0_0_30px_rgba(255,204,0,0.05)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <span className="w-8 h-8 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center shrink-0">
                     <Share2 className="w-4 h-4" />
                   </span>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                  <h2 className="text-base sm:text-lg font-bold text-white">
                     Your VIP Referral & Invite Link
                   </h2>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   Share this link with your players. Anyone who clicks will open sign-up directly with your sponsor code verified!
                 </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs text-slate-500 font-medium">Your Code:</span>
-                <span className="px-3.5 py-1.5 bg-amber-50 border border-amber-300 text-amber-800 font-mono font-bold rounded-xl text-xs uppercase tracking-wider">
+                <span className="text-xs text-slate-400 font-medium">Your Code:</span>
+                <span className="px-3.5 py-1.5 bg-[#FFCC00]/15 border border-[#FFCC00]/40 text-[#FFCC00] font-mono font-black rounded-xl text-xs uppercase tracking-wider">
                   {userInviteCode}
                 </span>
               </div>
             </div>
 
             {/* Direct Referral URL Bar */}
-            <div className="bg-[#f8fafc] border border-slate-200/80 rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row items-center gap-2.5">
-              <div className="flex-1 w-full truncate font-mono text-xs text-slate-700 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 select-all">
+            <div className="bg-[#181922] border border-white/10 rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row items-center gap-2.5">
+              <div className="flex-1 w-full truncate font-mono text-xs text-slate-300 bg-[#07080b] border border-white/10 rounded-xl px-3.5 py-2.5 select-all">
                 {referralUrl}
               </div>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm shrink-0"
+                className="w-full sm:w-auto bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-[0_2px_12px_rgba(255,204,0,0.3)] shrink-0 uppercase tracking-wide"
               >
                 {copiedLink ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <Check className="w-3.5 h-3.5 text-slate-950" />
                     <span>Copied!</span>
                   </>
                 ) : (
@@ -217,7 +217,7 @@ export default function PlayerDashboard() {
       {/* Floating Translation Widget on Right Edge */}
       <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30">
         <button
-          className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shadow-lg transition"
+          className="w-8 h-8 rounded-full bg-[#181922] hover:bg-[#FFCC00] text-slate-300 hover:text-slate-950 border border-white/10 hover:border-[#FFCC00] flex items-center justify-center shadow-lg transition"
           title="Change Language"
         >
           <Languages className="w-4 h-4" />

@@ -1,4 +1,4 @@
-// Vegas Vault Web Push Notification Service Worker
+// TierlockPlay Web Push Notification Service Worker
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -8,7 +8,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Vegas Vault Casino', body: 'New bonus alert waiting for you!' };
+  let data = { title: 'TierlockPlay Casino', body: 'New bonus alert waiting for you!' };
   if (event.data) {
     try {
       data = event.data.json();

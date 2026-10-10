@@ -27,7 +27,7 @@ export default function ChromeNotificationPrompt() {
         setPermission(res);
         setShowBanner(false);
         if (res === 'granted') {
-          new Notification('Vegas Vault Notifications Enabled! 🎰', {
+          new Notification('TierlockPlay Notifications Enabled! 🎰', {
             body: 'You will now receive instant alerts for bonuses, deposits & payout updates.',
             icon: '/favicon.ico',
           });
