@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import PlayerHeader from '@/components/PlayerHeader';
 import WhatsAppChat from '@/components/WhatsAppChat';
 import FreeplayModal from '@/components/FreeplayModal';
+import PromotionalModal from '@/components/PromotionalModal';
 import {
   ExternalLink,
   X,
@@ -496,6 +497,7 @@ export default function GamePlatformsPage() {
         user={user}
         onClaimed={refreshUserData}
       />
+      <PromotionalModal />
     </div>
   );
 }

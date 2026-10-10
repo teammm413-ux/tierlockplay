@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import PlayerHeader from '@/components/PlayerHeader';
 import WhatsAppChat from '@/components/WhatsAppChat';
 import FreeplayModal from '@/components/FreeplayModal';
+import PromotionalModal from '@/components/PromotionalModal';
 import {
   Wallet,
   User as UserIcon,
@@ -238,6 +239,9 @@ export default function PlayerDashboard() {
         user={user}
         onClaimed={refreshUserData}
       />
+
+      {/* Admin Dispatched VIP Promotional Popup Modal */}
+      <PromotionalModal />
     </div>
   );
 }
