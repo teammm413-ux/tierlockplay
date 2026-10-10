@@ -63,14 +63,16 @@ export async function GET(request) {
         username: r.username,
         type: r.type,
         platform_name: r.platform_name,
-        game_account: r.game_account,
+        game_account: r.game_username || r.game_account || '',
+        game_username: r.game_username || '',
+        game_password: r.game_password || '',
         amount: r.amount,
         status: r.status,
         failure_reason: r.failure_reason || '',
         wallet_balance_before: r.wallet_balance_before || 0,
         wallet_balance_after: r.wallet_balance_after || 0,
         created_at: r.created_at ? new Date(r.created_at).toISOString().replace('T', ' ').substring(0, 19) : '',
-        operation_time: r.created_at ? new Date(r.created_at).toISOString().replace('T', ' ').substring(0, 19) : '',
+        operation_time: r.updated_at ? new Date(r.updated_at).toISOString().replace('T', ' ').substring(0, 19) : (r.created_at ? new Date(r.created_at).toISOString().replace('T', ' ').substring(0, 19) : ''),
       })),
     });
   } catch (error) {

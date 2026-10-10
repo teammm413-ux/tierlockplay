@@ -433,8 +433,20 @@ export default function GameDepositRecordsPage() {
                               </button>
                             </span>
                           </td>
-                          <td className="py-4 px-4 font-semibold text-slate-800 whitespace-nowrap">{r.platform_name}</td>
-                          <td className="py-4 px-4 font-mono text-slate-700 whitespace-nowrap">{r.game_account}</td>
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            {r.game_account ? (
+                              <div className="font-mono text-xs">
+                                <div className="font-bold text-slate-900">{r.game_account}</div>
+                                {r.game_password && (
+                                  <div className="text-[11px] text-slate-500 font-mono">
+                                    Pass: {r.game_password}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px]">Pending creation</span>
+                            )}
+                          </td>
                           <td className="py-4 px-4 font-black text-slate-900">${Number(r.amount || 0).toFixed(2)}</td>
                           <td className="py-4 px-4 whitespace-nowrap">
                             <span

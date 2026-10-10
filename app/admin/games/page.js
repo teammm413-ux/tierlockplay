@@ -16,7 +16,9 @@ import {
   Image as ImageIcon,
   DollarSign,
   TrendingUp,
-  Sliders
+  Sliders,
+  Upload,
+  Loader2
 } from 'lucide-react';
 
 const PRESET_LOGOS = [
@@ -34,11 +36,41 @@ const PRESET_LOGOS = [
 export default function AdminGamesPage() {
   const [games, setGames] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingGame, setEditingGame] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setErrorMessage('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && data.url) {
+        setForm((prev) => ({ ...prev, logo_url: data.url }));
+        setStatusMessage('Image uploaded successfully!');
+        setTimeout(() => setStatusMessage(''), 3000);
+      } else {
+        setErrorMessage(data.message || 'Image upload failed');
+      }
+    } catch (err) {
+      setErrorMessage('Network error during image upload');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const [form, setForm] = useState({
     name: '',
@@ -420,23 +452,55 @@ export default function AdminGamesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Logo / Artwork Path</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Game Logo / Artwork * (Upload File from PC or Enter Path)
+                  </label>
+                  
+                  {/* File Upload Selector and Live Preview */}
+                  <div className="flex items-center gap-3 mb-2.5">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-2xl p-3 text-center transition bg-slate-50 hover:bg-amber-50/50 flex items-center justify-center gap-2">
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                            <span className="text-xs font-bold text-amber-700">Uploading Image...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 text-amber-600" />
+                            <span className="text-xs font-bold text-slate-700">Upload Image File (PNG, JPG, WebP)</span>
+                          </>
+                        )}
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        disabled={isUploading}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
+                      {form.logo_url && form.logo_url.startsWith('/') ? (
+                        <img src={form.logo_url} alt="preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-2xl">{form.logo_url || '🎰'}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Path / URL input */}
                   <div className="flex gap-2 items-center mb-2">
                     <input
                       type="text"
-                      placeholder="/images/games/juwa.jpg or any image URL"
+                      placeholder="/uploads/games/... or /images/games/juwa.jpg"
                       value={form.logo_url}
                       onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
                       className="flex-1 bg-slate-50 border border-slate-300 px-3 py-2 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
                     />
-                    <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-                      {form.logo_url && form.logo_url.startsWith('/') ? (
-                        <img src={form.logo_url} alt="preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-xl">{form.logo_url || '🎰'}</span>
-                      )}
-                    </div>
                   </div>
+
                   {/* Preset quick buttons */}
                   <div className="flex flex-wrap gap-1.5">
                     {PRESET_LOGOS.map((preset) => (
@@ -446,7 +510,7 @@ export default function AdminGamesPage() {
                         onClick={() => setForm({ ...form, logo_url: preset.value })}
                         className={`text-[10px] px-2 py-1 rounded-md border transition font-medium ${
                           form.logo_url === preset.value
-                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
                             : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                         }`}
                       >

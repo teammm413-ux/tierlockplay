@@ -5,61 +5,47 @@ import AdminSidebar from '@/components/AdminSidebar';
 import {
   Gamepad2,
   Search,
-  ArrowDownLeft,
-  ArrowUpRight,
   CheckCircle2,
-  History,
-  Zap,
-  Activity,
-  Cpu,
+  XCircle,
+  Clock,
+  Wallet,
+  ShieldCheck,
   RefreshCw,
-  Sparkles,
-  Code2,
-  X,
-  Send,
-  Check
+  Key,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  AlertCircle,
+  User,
+  DollarSign,
+  Loader2
 } from 'lucide-react';
-
-const PLATFORMS_LIST = [
-  { name: 'Juwa 777', code: 'JW', status: 'Ready' },
-  { name: 'Juwa 2.0', code: 'JW2', status: 'Ready' },
-  { name: 'Fire Kirin', code: 'FK', status: 'Ready' },
-  { name: 'Orion Stars', code: 'OS', status: 'Ready' },
-  { name: 'Panda Master', code: 'PM', status: 'Ready' },
-  { name: 'Ultra Panda', code: 'UP', status: 'Ready' },
-  { name: 'Game Vault', code: 'GV', status: 'Ready' },
-  { name: 'Milky Way', code: 'MW', status: 'Ready' },
-  { name: 'Golden Dragon', code: 'GD', status: 'Ready' },
-  { name: 'V-Blink', code: 'VB', status: 'Ready' },
-  { name: 'River Sweeps', code: 'RS', status: 'Ready' },
-  { name: 'E-Games', code: 'EG', status: 'Ready' },
-];
 
 export default function AdminGameTransactionsPage() {
   const [transactions, setTransactions] = useState([]);
-  const [stats, setStats] = useState({ totalOperations: 0, autoDispatchedCount: 0, connectedPlatforms: 12, engineStatus: 'ONLINE' });
-  const [typeFilter, setTypeFilter] = useState('');
+  const [stats, setStats] = useState({ totalOperations: 0, pendingCount: 0, approvedCount: 0 });
+  const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
+  const [lastUpdated, setLastUpdated] = useState('');
 
-  // Test Auto-Load Modal State
-  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
-  const [testForm, setTestForm] = useState({
-    platformName: 'Juwa 777',
-    username: 'alex',
-    gameAccount: 'JW_ALEX_777',
-    amount: '50',
-  });
-  const [isDispatchingTest, setIsDispatchingTest] = useState(false);
-  const [testResult, setTestResult] = useState(null);
+  // Approval Modal State
+  const [selectedTx, setSelectedTx] = useState(null);
+  const [gameUsernameInput, setGameUsernameInput] = useState('');
+  const [gamePasswordInput, setGamePasswordInput] = useState('');
+  const [adminNotesInput, setAdminNotesInput] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
 
-  // Payload Inspector Modal
-  const [inspectedTx, setInspectedTx] = useState(null);
+  // Password Visibility & Copied states
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(null);
 
   const loadTransactions = async () => {
     try {
-      const url = `/api/admin/game-transactions?type=${typeFilter}&q=${encodeURIComponent(searchQuery)}`;
+      const url = `/api/admin/game-transactions?status=${statusFilter}&q=${encodeURIComponent(searchQuery)}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
@@ -67,43 +53,109 @@ export default function AdminGameTransactionsPage() {
         if (data.stats) setStats(data.stats);
         setLastUpdated(new Date().toLocaleTimeString());
       }
-    } catch (err) {} finally {
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
     loadTransactions();
-    // Real-time polling every 5 seconds
-    const interval = setInterval(loadTransactions, 5000);
+    const interval = setInterval(loadTransactions, 6000);
     return () => clearInterval(interval);
-  }, [typeFilter, searchQuery]);
+  }, [statusFilter, searchQuery]);
 
-  const handleSimulateApiDispatch = async (e) => {
+  const openApproveModal = (tx) => {
+    setSelectedTx(tx);
+    // Pre-fill existing credentials if user already had them
+    setGameUsernameInput(tx.game_username || `${tx.platform_name.slice(0, 2).toUpperCase()}_${tx.username}`);
+    setGamePasswordInput(tx.game_password || `Pass${Math.floor(1000 + Math.random() * 9000)}!`);
+    setAdminNotesInput(tx.admin_notes || '');
+    setActionError('');
+    setActionSuccess('');
+  };
+
+  const closeApproveModal = () => {
+    setSelectedTx(null);
+    setActionError('');
+    setActionSuccess('');
+  };
+
+  const handleApproveSubmit = async (e) => {
     e.preventDefault();
-    setIsDispatchingTest(true);
-    setTestResult(null);
+    if (!selectedTx) return;
+
+    if (!gameUsernameInput.trim() || !gamePasswordInput.trim()) {
+      setActionError('Both Game Username and Password are required');
+      return;
+    }
+
+    setIsProcessing(true);
+    setActionError('');
+    setActionSuccess('');
 
     try {
       const res = await fetch('/api/admin/game-transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'simulate_api_dispatch',
-          ...testForm,
+          action: 'approve_deposit',
+          transactionId: selectedTx.id || selectedTx._id,
+          gameUsername: gameUsernameInput.trim(),
+          gamePassword: gamePasswordInput.trim(),
+          adminNotes: adminNotesInput.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setActionSuccess(data.message);
+        loadTransactions();
+        setTimeout(() => {
+          closeApproveModal();
+        }, 1500);
+      } else {
+        setActionError(data.message || 'Approval failed');
+      }
+    } catch (err) {
+      setActionError('Network error executing approval');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async (tx) => {
+    const reason = window.prompt(`Reject game load request #${tx.order_no}? Enter reason:`, 'Insufficient funds or unverified request');
+    if (reason === null) return;
+
+    try {
+      const res = await fetch('/api/admin/game-transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reject_deposit',
+          transactionId: tx.id || tx._id,
+          rejectReason: reason,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setTestResult(data);
+        alert(data.message);
         loadTransactions();
       } else {
-        setTestResult({ success: false, message: data.message || 'Dispatch failed' });
+        alert(data.message || 'Failed to reject');
       }
     } catch (err) {
-      setTestResult({ success: false, message: 'Network error executing API dispatch' });
-    } finally {
-      setIsDispatchingTest(false);
+      alert('Network error');
+    }
+  };
+
+  const copyToClipboard = (text, key) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
     }
   };
 
@@ -115,123 +167,92 @@ export default function AdminGameTransactionsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <Gamepad2 className="w-6 h-6 text-amber-500" />
-                <span>Automated Coin Loading Engine</span>
-              </h1>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                LIVE API BRIDGE
-              </span>
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-sm">
+                <Gamepad2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                  Game Accounts &amp; Coin Loading Desk
+                </h1>
+                <p className="text-xs text-slate-500">
+                  Review player game load requests, assign game username &amp; passwords, and credit in-game accounts.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Real-time audit &amp; automated coin dispatch pipeline for all 12 sweepstakes platforms. Live API integration ready.
-            </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
-              Updated: {lastUpdated}
-            </span>
+            {lastUpdated && (
+              <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+                Live Polling: {lastUpdated}
+              </span>
+            )}
             <button
-              onClick={() => {
-                setIsTestModalOpen(true);
-                setTestResult(null);
-              }}
-              className="btn-gold px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide text-slate-950 flex items-center gap-2 shadow-sm transition transform hover:scale-105"
+              onClick={loadTransactions}
+              className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition"
+              title="Refresh Records"
             >
-              <Zap className="w-4 h-4 fill-current" />
-              <span>Test Automated Game Load</span>
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* 4 Real-time Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
-              <span>Auto-Load Dispatch Engine</span>
-              <Cpu className="w-4 h-4 text-emerald-500" />
+        {/* 3 Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Card 1: Pending */}
+          <div className="bg-white border border-amber-200 rounded-2xl p-5 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold uppercase text-amber-700">
+              <span>Pending Requests</span>
+              <Clock className="w-4 h-4 text-amber-600" />
             </div>
-            <div className="text-xl font-black text-slate-900 flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-              <span>ONLINE (Active)</span>
+            <div className="text-3xl font-black text-amber-600 font-mono">
+              {stats.pendingCount}
             </div>
-            <p className="text-[11px] text-emerald-700 font-medium">Ready for Provider APIs in 2 days</p>
+            <p className="text-[11px] text-slate-500">Players waiting for game accounts &amp; coin load</p>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
-              <span>Connected Platforms</span>
-              <Gamepad2 className="w-4 h-4 text-blue-500" />
+          {/* Card 2: Approved */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold uppercase text-emerald-700">
+              <span>Approved Operations</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              12 / 12 Hooked
+            <div className="text-3xl font-black text-emerald-600 font-mono">
+              {stats.approvedCount}
             </div>
-            <p className="text-[11px] text-slate-500">Juwa, Fire Kirin, Orion Stars &amp; more</p>
+            <p className="text-[11px] text-slate-500">Credentials delivered &amp; funds deducted</p>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
-              <span>Average API Latency</span>
-              <Activity className="w-4 h-4 text-amber-500" />
+          {/* Card 3: Total Operations */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold uppercase text-slate-700">
+              <span>Total Processed</span>
+              <Gamepad2 className="w-4 h-4 text-slate-600" />
             </div>
-            <div className="text-2xl font-black text-amber-600 font-mono">
-              ~780ms
+            <div className="text-3xl font-black text-slate-900 font-mono">
+              {stats.totalOperations}
             </div>
-            <p className="text-[11px] text-slate-500">Real-time instant credit injection</p>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase">
-              <span>Auto-Dispatched Operations</span>
-              <History className="w-4 h-4 text-purple-500" />
-            </div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              {stats.totalOperations} Operations
-            </div>
-            <p className="text-[11px] text-purple-700 font-medium">100% automated audit logging</p>
-          </div>
-        </div>
-
-        {/* 12 Platforms Live API Status Bar */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center justify-between">
-            <span>Live Provider API Connection Status (12 Platforms)</span>
-            <span className="text-[11px] text-emerald-600 font-mono font-normal">All 12 Gateways Listening</span>
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {PLATFORMS_LIST.map((p) => (
-              <div
-                key={p.code}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 shrink-0 text-xs"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="font-bold text-slate-800">{p.name}</span>
-                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-bold">
-                  API Ready
-                </span>
-              </div>
-            ))}
+            <p className="text-[11px] text-slate-500">Across all 12 sweepstakes platforms</p>
           </div>
         </div>
 
         {/* Filters & Search */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
             {[
               { label: 'All Operations', value: '' },
-              { label: 'Loads (Deposits)', value: 'Deposit' },
-              { label: 'Cashouts (Withdrawals)', value: 'Withdrawal' },
+              { label: `Pending (${stats.pendingCount})`, value: 'Pending' },
+              { label: 'Approved', value: 'Approved' },
+              { label: 'Rejected', value: 'Rejected' },
             ].map((t) => (
               <button
                 key={t.value}
-                onClick={() => setTypeFilter(t.value)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                  typeFilter === t.value
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                onClick={() => setStatusFilter(t.value)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+                  statusFilter === t.value
+                    ? 'bg-white text-slate-950 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-950'
                 }`}
               >
                 {t.label}
@@ -245,89 +266,143 @@ export default function AdminGameTransactionsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search order #, player, or TX ID..."
+              placeholder="Search by order #, player, or platform..."
               className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-xs pl-10 pr-4 py-2 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white placeholder-slate-400 transition"
             />
           </div>
         </div>
 
         {/* Real-time Transactions Table */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider font-semibold border-b border-slate-200">
                 <tr>
-                  <th className="px-5 py-3.5">Order &amp; In-Game TX</th>
-                  <th className="px-5 py-3.5">Player</th>
-                  <th className="px-5 py-3.5">Platform</th>
-                  <th className="px-5 py-3.5">Account ID</th>
-                  <th className="px-5 py-3.5">Type</th>
-                  <th className="px-5 py-3.5">Amount</th>
-                  <th className="px-5 py-3.5">API Engine Status</th>
-                  <th className="px-5 py-3.5">Latency</th>
-                  <th className="px-5 py-3.5 text-right">API Payload</th>
+                  <th className="px-5 py-3.5">Order No</th>
+                  <th className="px-5 py-3.5">Player &amp; Live Balance</th>
+                  <th className="px-5 py-3.5">Game Platform</th>
+                  <th className="px-5 py-3.5">Requested Load</th>
+                  <th className="px-5 py-3.5">Assigned Credentials</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-5 py-12 text-center text-slate-400">
-                      {isLoading ? 'Connecting to live API engine...' : 'No game operations recorded yet.'}
+                    <td colSpan={7} className="px-5 py-12 text-center text-slate-400">
+                      {isLoading ? 'Loading operations...' : 'No game load requests found.'}
                     </td>
                   </tr>
                 ) : (
-                  transactions.map((t) => (
-                    <tr key={t.id} className="hover:bg-slate-50/80 transition">
-                      <td className="px-5 py-4">
-                        <div className="font-mono font-bold text-amber-600">{t.order_no}</div>
-                        <div className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded w-fit mt-0.5 font-bold">
-                          TX: {t.in_game_tx_id || 'JW-829104'}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 font-bold text-slate-900">
-                        {t.username}
-                      </td>
-                      <td className="px-5 py-4 font-bold text-slate-800">
-                        {t.platform_name}
-                      </td>
-                      <td className="px-5 py-4 font-mono text-slate-600 font-semibold">
-                        {t.game_account}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                            t.type === 'Deposit'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-emerald-100 text-emerald-700'
-                          }`}
-                        >
-                          {t.type === 'Deposit' ? 'Load' : 'Cashout'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 font-mono font-extrabold text-slate-900 text-sm">
-                        ${t.amount.toFixed(2)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          <Zap className="w-3 h-3 text-emerald-600 fill-current" />
-                          <span>{t.api_dispatch_status || 'Auto-Dispatched'}</span>
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 font-mono text-[11px] text-slate-500">
-                        {t.api_latency_ms || 780}ms
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <button
-                          onClick={() => setInspectedTx(t)}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] font-semibold transition flex items-center gap-1.5 ml-auto"
-                          title="View API JSON Payload"
-                        >
-                          <Code2 className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Payload</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  transactions.map((t) => {
+                    const isPending = t.status === 'Pending';
+                    const hasSufficientBalance = t.user_current_balance >= t.amount;
+
+                    return (
+                      <tr key={t.id} className="hover:bg-slate-50/80 transition">
+                        {/* Order No & Date */}
+                        <td className="px-5 py-4">
+                          <div className="font-mono font-bold text-slate-900">{t.order_no}</div>
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            {new Date(t.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </td>
+
+                        {/* Player & Live Balance (REQUIREMENT: SHOW USER BALANCE) */}
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{t.username}</span>
+                          </div>
+                          {/* Live Balance Chip */}
+                          <div className="mt-1 flex items-center gap-1">
+                            <span className="text-[11px] text-slate-500 font-medium">Wallet:</span>
+                            <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded-md border ${
+                              hasSufficientBalance
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-red-50 text-red-700 border-red-200'
+                            }`}>
+                              ${Number(t.user_current_balance || 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Platform */}
+                        <td className="px-5 py-4 font-bold text-slate-900">
+                          <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold">
+                            {t.platform_name}
+                          </span>
+                        </td>
+
+                        {/* Requested Amount */}
+                        <td className="px-5 py-4 font-mono font-black text-sm text-slate-900">
+                          ${t.amount.toFixed(2)}
+                        </td>
+
+                        {/* Game Credentials */}
+                        <td className="px-5 py-4">
+                          {t.game_username ? (
+                            <div className="space-y-1 font-mono text-[11px]">
+                              <div className="text-slate-800">
+                                <span className="text-slate-400 font-sans">User:</span> <strong>{t.game_username}</strong>
+                              </div>
+                              <div className="text-slate-600">
+                                <span className="text-slate-400 font-sans">Pass:</span> {t.game_password}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-xs italic">
+                              Not assigned yet
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-5 py-4">
+                          {isPending ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                              <Clock className="w-3 h-3 text-amber-700" />
+                              <span>Pending Review</span>
+                            </span>
+                          ) : t.status === 'Approved' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Approved &amp; Loaded</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-800 border border-red-300">
+                              <XCircle className="w-3 h-3 text-red-600" />
+                              <span>Rejected</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-5 py-4 text-right">
+                          {isPending ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => openApproveModal(t)}
+                                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs transition flex items-center gap-1"
+                              >
+                                <span>Approve &amp; Load</span>
+                              </button>
+                              <button
+                                onClick={() => handleReject(t)}
+                                className="px-2.5 py-1.5 rounded-xl border border-red-300 hover:bg-red-50 text-red-700 text-xs font-semibold transition"
+                                title="Reject Request"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 font-medium">Completed</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -335,166 +410,153 @@ export default function AdminGameTransactionsPage() {
         </div>
       </main>
 
-      {/* Test Automated API Dispatch Modal */}
-      {isTestModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
+      {/* APPROVE & LOAD CREDENTIALS MODAL */}
+      {selectedTx && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                  <Zap className="w-4 h-4 fill-current" />
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <Gamepad2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900">Test Automated Game API Load</h3>
-                  <p className="text-[11px] text-slate-500">Live test credit load dispatch to any of the 12 platforms</p>
+                  <h3 className="font-bold text-base text-slate-900">
+                    Approve &amp; Load {selectedTx.platform_name}
+                  </h3>
+                  <p className="text-xs text-slate-500">Order #{selectedTx.order_no}</p>
                 </div>
               </div>
-              <button onClick={() => setIsTestModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+              <button
+                onClick={closeApproveModal}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
+              >
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleSimulateApiDispatch} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-bold uppercase mb-1">Target Platform</label>
-                  <select
-                    value={testForm.platformName}
-                    onChange={(e) => setTestForm({ ...testForm, platformName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
+            {/* Player Info & Live Balance Snapshot */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Player Username:</span>
+                <span className="font-bold text-slate-900">{selectedTx.username}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Player Live Wallet Balance:</span>
+                <span className="font-mono font-bold text-emerald-700 text-sm">
+                  ${Number(selectedTx.user_current_balance || 0).toFixed(2)} USD
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Requested Coin Load:</span>
+                <span className="font-mono font-black text-amber-700 text-sm">
+                  ${selectedTx.amount.toFixed(2)} USD
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-slate-700">
+                <span className="font-semibold">Balance After Approval:</span>
+                <span className="font-mono font-bold text-slate-900">
+                  ${Math.max(0, (selectedTx.user_current_balance || 0) - selectedTx.amount).toFixed(2)} USD
+                </span>
+              </div>
+            </div>
+
+            {actionError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{actionError}</span>
+              </div>
+            )}
+
+            {actionSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{actionSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleApproveSubmit} className="space-y-4">
+              {/* Game Username */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  In-Game Username / ID *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. JW_ALEX_99"
+                  value={gameUsernameInput}
+                  onChange={(e) => setGameUsernameInput(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 px-3.5 py-2.5 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white font-mono font-semibold"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  The account username the player will enter in {selectedTx.platform_name}.
+                </p>
+              </div>
+
+              {/* Game Password */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    In-Game Password *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setGamePasswordInput(`Pass${Math.floor(1000 + Math.random() * 9000)}!`)}
+                    className="text-[11px] text-amber-700 font-bold hover:underline"
                   >
-                    {PLATFORMS_LIST.map((p) => (
-                      <option key={p.name} value={p.name}>{p.name} (API Ready)</option>
-                    ))}
-                  </select>
+                    Generate Random Password
+                  </button>
                 </div>
-
-                <div>
-                  <label className="block text-slate-600 font-bold uppercase mb-1">Player Username</label>
+                <div className="relative">
                   <input
-                    type="text"
+                    type={showPassword ? 'text' : 'password'}
                     required
-                    value={testForm.username}
-                    onChange={(e) => setTestForm({ ...testForm, username: e.target.value })}
-                    placeholder="e.g. alex"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
+                    placeholder="Enter password"
+                    value={gamePasswordInput}
+                    onChange={(e) => setGamePasswordInput(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 px-3.5 py-2.5 pr-10 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white font-mono font-semibold"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-bold uppercase mb-1">In-Game Account ID</label>
-                  <input
-                    type="text"
-                    required
-                    value={testForm.gameAccount}
-                    onChange={(e) => setTestForm({ ...testForm, gameAccount: e.target.value })}
-                    placeholder="e.g. JW_PLAYER_777"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-600 font-bold uppercase mb-1">Coins Amount ($ USD)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="1"
-                    required
-                    value={testForm.amount}
-                    onChange={(e) => setTestForm({ ...testForm, amount: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-amber-500"
-                  />
-                </div>
+              {/* Optional Admin Notes */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Internal Remarks / Notes (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Loaded via Juwa agent portal"
+                  value={adminNotesInput}
+                  onChange={(e) => setAdminNotesInput(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 px-3.5 py-2 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
+                />
               </div>
 
-              {testResult && (
-                <div className={`p-4 rounded-2xl border text-xs space-y-2 ${
-                  testResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'
-                }`}>
-                  <div className="font-bold flex items-center gap-1.5">
-                    {testResult.success ? <Check className="w-4 h-4 text-emerald-600" /> : <X className="w-4 h-4 text-rose-600" />}
-                    <span>{testResult.message}</span>
-                  </div>
-                  {testResult.apiResponse && (
-                    <pre className="bg-slate-900 text-emerald-400 p-3 rounded-xl font-mono text-[11px] overflow-x-auto">
-                      {JSON.stringify(testResult.apiResponse, null, 2)}
-                    </pre>
-                  )}
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsTestModalOpen(false)}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold uppercase transition"
-                >
-                  Close
-                </button>
+              <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isDispatchingTest}
-                  className="flex-1 btn-gold py-3 rounded-xl text-slate-950 font-black uppercase flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-md"
+                  disabled={isProcessing}
+                  className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{isDispatchingTest ? 'Dispatching to API...' : 'Execute Live API Load'}</span>
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Processing &amp; Deducting Balance...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Approval &amp; Deduct ${selectedTx.amount.toFixed(2)}</span>
+                  )}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Payload Inspector Modal */}
-      {inspectedTx && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Code2 className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-base text-slate-900">Provider API Payload Audit</h3>
-              </div>
-              <button onClick={() => setInspectedTx(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-2 gap-2 text-slate-600">
-                <div><span className="font-bold">Platform:</span> {inspectedTx.platform_name}</div>
-                <div><span className="font-bold">Player:</span> {inspectedTx.username}</div>
-                <div><span className="font-bold">Order No:</span> {inspectedTx.order_no}</div>
-                <div><span className="font-bold">In-Game TX:</span> {inspectedTx.in_game_tx_id || 'JW-829104'}</div>
-              </div>
-
-              <div>
-                <label className="block text-slate-500 font-bold uppercase mb-1">Automated Provider Response (JSON)</label>
-                <pre className="bg-slate-950 text-emerald-400 p-4 rounded-xl font-mono text-[11px] overflow-x-auto leading-relaxed shadow-inner">
-{JSON.stringify({
-  status: 200,
-  provider: `${inspectedTx.platform_name} Game Server`,
-  operation: inspectedTx.type,
-  account_id: inspectedTx.game_account,
-  coins_amount: inspectedTx.amount,
-  in_game_tx_id: inspectedTx.in_game_tx_id || 'JW-829104',
-  latency_ms: inspectedTx.api_latency_ms || 780,
-  timestamp: inspectedTx.created_at,
-  signature_verified: true,
-  sync_engine: 'TierLockPlay Automated Hub v2'
-}, null, 2)}
-                </pre>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setInspectedTx(null)}
-                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold uppercase transition"
-              >
-                Close Inspector
-              </button>
-            </div>
           </div>
         </div>
       )}

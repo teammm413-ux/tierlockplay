@@ -1,74 +1,89 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, GameTransaction, User } from '@/lib/mongodb';
+import { connectToDatabase, GameTransaction, User, UserGameAccount } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
-
-function generateInGameTxId(platform) {
-  const prefix = (platform || 'GAME').substring(0, 2).toUpperCase();
-  const rand = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${rand}`;
-}
 
 export async function GET(request) {
   try {
     const session = getSessionFromRequest(request);
     if (!session || !session.isAdmin) {
-      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+      return NextResponse.json({ success: false, message: 'Unauthorized. Admin access required.' }, { status: 403 });
     }
 
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type') || '';
+    const status = searchParams.get('status') || '';
     const query = searchParams.get('q') || '';
 
     const filter = {};
-    if (type) {
-      filter.type = type;
+    if (status) {
+      filter.status = status;
     }
     if (query) {
       filter.$or = [
         { order_no: new RegExp(query, 'i') },
         { username: new RegExp(query, 'i') },
         { platform_name: new RegExp(query, 'i') },
-        { game_account: new RegExp(query, 'i') },
-        { in_game_tx_id: new RegExp(query, 'i') }
+        { game_username: new RegExp(query, 'i') },
       ];
     }
 
-    const transactions = await GameTransaction.find(filter).sort({ created_at: -1 }).limit(100);
+    // Fetch latest 200 game operations
+    const transactions = await GameTransaction.find(filter).sort({ created_at: -1 }).limit(200);
 
-    const safeTransactions = transactions.map(t => ({
-      id: t._id.toString(),
-      _id: t._id.toString(),
-      order_no: t.order_no,
-      user_id: t.user_id,
-      username: t.username,
-      platform_name: t.platform_name,
-      game_account: t.game_account,
-      type: t.type,
-      amount: t.amount,
-      status: t.status,
-      api_dispatch_status: t.api_dispatch_status || 'Auto-Dispatched',
-      in_game_tx_id: t.in_game_tx_id || generateInGameTxId(t.platform_name),
-      api_latency_ms: t.api_latency_ms || Math.floor(650 + Math.random() * 400),
-      wallet_balance_before: t.wallet_balance_before || 0,
-      wallet_balance_after: t.wallet_balance_after || 0,
-      created_at: t.created_at,
-    }));
+    // Collect all user IDs to attach current live wallet balance
+    const userIds = [...new Set(transactions.map((t) => t.user_id).filter(Boolean))];
+    const users = await User.find({ _id: { $in: userIds } }).select('_id username wallet_balance email phone');
+    const userBalanceMap = {};
+    for (const u of users) {
+      userBalanceMap[u._id.toString()] = {
+        balance: u.wallet_balance || 0,
+        email: u.email || '',
+        phone: u.phone || '',
+      };
+    }
+
+    const safeTransactions = transactions.map((t) => {
+      const uInfo = userBalanceMap[t.user_id] || { balance: 0, email: '', phone: '' };
+      return {
+        id: t._id.toString(),
+        _id: t._id.toString(),
+        order_no: t.order_no,
+        user_id: t.user_id,
+        username: t.username,
+        user_current_balance: uInfo.balance,
+        user_email: uInfo.email,
+        user_phone: uInfo.phone,
+        platform_name: t.platform_name,
+        game_account: t.game_account || t.game_username || '',
+        game_username: t.game_username || '',
+        game_password: t.game_password || '',
+        type: t.type,
+        amount: t.amount,
+        status: t.status || 'Pending',
+        admin_notes: t.admin_notes || '',
+        failure_reason: t.failure_reason || '',
+        wallet_balance_before: t.wallet_balance_before || 0,
+        wallet_balance_after: t.wallet_balance_after || 0,
+        created_at: t.created_at,
+      };
+    });
+
+    const pendingCount = safeTransactions.filter((t) => t.status === 'Pending').length;
+    const approvedCount = safeTransactions.filter((t) => t.status === 'Approved').length;
 
     return NextResponse.json({
       success: true,
       transactions: safeTransactions,
       stats: {
         totalOperations: safeTransactions.length,
-        autoDispatchedCount: safeTransactions.filter(t => t.api_dispatch_status === 'Auto-Dispatched').length,
-        connectedPlatforms: 12,
-        engineStatus: 'ONLINE',
-      }
+        pendingCount,
+        approvedCount,
+      },
     });
   } catch (error) {
-    console.error('admin game-transactions error:', error);
+    console.error('admin game-transactions GET error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
@@ -82,58 +97,114 @@ export async function POST(request) {
 
     await connectToDatabase();
     const body = await request.json();
-    const { action, platformName, username, gameAccount, amount } = body;
+    const { action, transactionId, gameUsername, gamePassword, adminNotes, rejectReason } = body;
 
-    if (action === 'simulate_api_dispatch') {
-      const parsedAmount = parseFloat(amount) || 20.00;
-      const targetUser = await User.findOne({ username: username || 'alex' });
-      if (!targetUser) {
-        return NextResponse.json({ success: false, message: `User "${username}" not found` }, { status: 404 });
+    // ACTION 1: APPROVE DEPOSIT & CREATE/SAVE GAME CREDENTIALS
+    if (action === 'approve_deposit') {
+      if (!transactionId) {
+        return NextResponse.json({ success: false, message: 'Transaction ID is required' }, { status: 400 });
+      }
+      if (!gameUsername || !gameUsername.trim()) {
+        return NextResponse.json({ success: false, message: 'In-Game Username is required' }, { status: 400 });
+      }
+      if (!gamePassword || !gamePassword.trim()) {
+        return NextResponse.json({ success: false, message: 'In-Game Password is required' }, { status: 400 });
       }
 
-      const inGameTx = generateInGameTxId(platformName);
-      const randOrder = 'GDP' + Date.now();
-      const balanceBefore = targetUser.wallet_balance || 0;
-      const balanceAfter = Math.max(0, balanceBefore - parsedAmount);
+      const tx = await GameTransaction.findById(transactionId);
+      if (!tx) {
+        return NextResponse.json({ success: false, message: 'Transaction not found' }, { status: 404 });
+      }
 
-      targetUser.wallet_balance = balanceAfter;
-      await targetUser.save();
+      if (tx.status !== 'Pending') {
+        return NextResponse.json({ success: false, message: `Transaction already processed (Status: ${tx.status})` }, { status: 400 });
+      }
 
-      const newTx = await GameTransaction.create({
-        order_no: randOrder,
-        user_id: targetUser._id.toString(),
-        username: targetUser.username,
-        type: 'Deposit',
-        platform_name: platformName || 'Juwa',
-        game_account: gameAccount || 'JW_PLAYER_99',
-        amount: parsedAmount,
-        status: 'Approved',
-        api_dispatch_status: 'Auto-Dispatched',
-        in_game_tx_id: inGameTx,
-        api_latency_ms: Math.floor(700 + Math.random() * 300),
-        wallet_balance_before: balanceBefore,
-        wallet_balance_after: balanceAfter,
-        created_at: new Date(),
-      });
+      const user = await User.findById(tx.user_id);
+      if (!user) {
+        return NextResponse.json({ success: false, message: 'User account not found' }, { status: 404 });
+      }
+
+      // Check user still has sufficient balance to deduct
+      if (user.wallet_balance < tx.amount) {
+        return NextResponse.json({
+          success: false,
+          message: `User has insufficient balance ($${Number(user.wallet_balance).toFixed(2)}). Cannot deduct $${Number(tx.amount).toFixed(2)}.`,
+        }, { status: 400 });
+      }
+
+      const balanceBefore = user.wallet_balance;
+      const balanceAfter = parseFloat((balanceBefore - tx.amount).toFixed(2));
+
+      // 1. Deduct balance from user wallet
+      user.wallet_balance = balanceAfter;
+      await user.save();
+
+      // 2. Update transaction
+      tx.status = 'Approved';
+      tx.game_username = gameUsername.trim();
+      tx.game_password = gamePassword.trim();
+      tx.game_account = gameUsername.trim();
+      tx.admin_notes = adminNotes || '';
+      tx.wallet_balance_before = balanceBefore;
+      tx.wallet_balance_after = balanceAfter;
+      tx.updated_at = new Date();
+      await tx.save();
+
+      // 3. Upsert into UserGameAccount (permanent credentials for player)
+      await UserGameAccount.findOneAndUpdate(
+        {
+          user_id: user._id.toString(),
+          platform_name: tx.platform_name
+        },
+        {
+          username: user.username,
+          platform_name: tx.platform_name,
+          game_username: gameUsername.trim(),
+          game_password: gamePassword.trim(),
+          status: 'Active',
+          $inc: { total_loaded: tx.amount },
+          updated_at: new Date()
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
 
       return NextResponse.json({
         success: true,
-        message: `Successfully executed Automated Game API Load of $${parsedAmount} to ${platformName}!`,
-        apiResponse: {
-          status: 200,
-          provider: `${platformName} API Dispatch Engine`,
-          in_game_tx_id: inGameTx,
-          account_id: gameAccount,
-          coins_credited: parsedAmount,
-          latency: `${newTx.api_latency_ms}ms`,
-          timestamp: new Date().toISOString(),
-          signature: 'HMAC_VERIFIED_OK'
-        },
-        transaction: newTx,
+        message: `Successfully loaded $${tx.amount.toFixed(2)} to ${tx.platform_name} for ${user.username}! $${tx.amount.toFixed(2)} deducted from player wallet. Credentials saved.`,
+        transaction: tx,
+        newBalance: balanceAfter,
       });
     }
 
-    return NextResponse.json({ success: false, message: 'Invalid action' }, { status: 400 });
+    // ACTION 2: REJECT DEPOSIT (NO DEDUCTION)
+    if (action === 'reject_deposit') {
+      if (!transactionId) {
+        return NextResponse.json({ success: false, message: 'Transaction ID is required' }, { status: 400 });
+      }
+
+      const tx = await GameTransaction.findById(transactionId);
+      if (!tx) {
+        return NextResponse.json({ success: false, message: 'Transaction not found' }, { status: 404 });
+      }
+
+      if (tx.status !== 'Pending') {
+        return NextResponse.json({ success: false, message: `Transaction already processed (Status: ${tx.status})` }, { status: 400 });
+      }
+
+      tx.status = 'Rejected';
+      tx.failure_reason = rejectReason || 'Declined by Administrator';
+      tx.updated_at = new Date();
+      await tx.save();
+
+      return NextResponse.json({
+        success: true,
+        message: `Game deposit request ${tx.order_no} has been rejected. No funds deducted.`,
+        transaction: tx,
+      });
+    }
+
+    return NextResponse.json({ success: false, message: 'Invalid action parameter' }, { status: 400 });
   } catch (error) {
     console.error('admin game-transactions POST error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

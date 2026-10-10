@@ -15,19 +15,28 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Sparkles,
-  Link as LinkIcon
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  Clock,
+  ShieldCheck,
+  Download,
+  Wallet,
+  Loader2
 } from 'lucide-react';
 
 export default function GamePlatformsPage() {
   const [user, setUser] = useState(null);
   const [platforms, setPlatforms] = useState([]);
-  const [activeModal, setActiveModal] = useState(null); // { type: 'bind' | 'deposit' | 'withdraw', platform: obj }
-  const [inGameIdInput, setInGameIdInput] = useState('');
+  const [activeModal, setActiveModal] = useState(null); // { type: 'deposit', platform: obj }
   const [amountInput, setAmountInput] = useState('20');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalNotice, setModalNotice] = useState({ text: '', isError: false });
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFreeplayOpen, setIsFreeplayOpen] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({});
+  const [copiedItem, setCopiedItem] = useState(null);
 
   const refreshUserData = async () => {
     try {
@@ -50,9 +59,8 @@ export default function GamePlatformsPage() {
     loadPlatforms();
   }, []);
 
-  const openModal = (type, platform) => {
-    setActiveModal({ type, platform });
-    setInGameIdInput(platform.boundAccountId || '');
+  const openDepositModal = (platform) => {
+    setActiveModal({ type: 'deposit', platform });
     setAmountInput('20');
     setModalNotice({ text: '', isError: false });
   };
@@ -62,42 +70,6 @@ export default function GamePlatformsPage() {
     setModalNotice({ text: '', isError: false });
   };
 
-  // 1. Bind in-game account ID (Screenshot image copy 7 & 9)
-  const handleBindSubmit = async (e) => {
-    e.preventDefault();
-    if (!inGameIdInput.trim()) {
-      setModalNotice({ text: 'Please enter your in-game account ID or username', isError: true });
-      return;
-    }
-
-    setIsSubmitting(true);
-    setModalNotice({ text: '', isError: false });
-
-    try {
-      const res = await fetch('/api/games/bind', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platformId: activeModal.platform.id || activeModal.platform._id,
-          inGameAccountId: inGameIdInput.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setModalNotice({ text: data.message, isError: false });
-        loadPlatforms();
-        setTimeout(closeModal, 1200);
-      } else {
-        setModalNotice({ text: data.message || 'Binding failed', isError: true });
-      }
-    } catch (err) {
-      setModalNotice({ text: 'Connection error', isError: true });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // 2. Deposit from Wallet into Game Platform
   const handleDepositSubmit = async (e) => {
     e.preventDefault();
     const amt = parseFloat(amountInput);
@@ -108,7 +80,7 @@ export default function GamePlatformsPage() {
 
     if (!user || user.wallet_balance < amt) {
       setModalNotice({
-        text: `Insufficient wallet balance ($${Number(user?.wallet_balance || 0).toFixed(2)}). Please deposit first.`,
+        text: `Insufficient wallet balance ($${Number(user?.wallet_balance || 0).toFixed(2)}). Please deposit to wallet first.`,
         isError: true,
       });
       return;
@@ -123,7 +95,6 @@ export default function GamePlatformsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           platformName: activeModal.platform.name,
-          gameAccount: activeModal.platform.boundAccountId || inGameIdInput.trim(),
           amount: amt,
         }),
       });
@@ -132,57 +103,33 @@ export default function GamePlatformsPage() {
         setModalNotice({ text: data.message, isError: false });
         refreshUserData();
         loadPlatforms();
-        setTimeout(closeModal, 1500);
+        setTimeout(closeModal, 2000);
       } else {
         setModalNotice({ text: data.message || 'Transfer failed', isError: true });
       }
     } catch (err) {
-      setModalNotice({ text: 'Connection error', isError: true });
+      setModalNotice({ text: 'Connection error submitting game load request', isError: true });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 3. Redeem / Withdraw from Game Platform to Wallet
-  const handleWithdrawSubmit = async (e) => {
-    e.preventDefault();
-    const amt = parseFloat(amountInput);
-    if (!amt || amt <= 0) {
-      setModalNotice({ text: 'Enter a valid redemption amount', isError: true });
-      return;
-    }
-
-    setIsSubmitting(true);
-    setModalNotice({ text: '', isError: false });
-
-    try {
-      const res = await fetch('/api/games/withdraw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platformName: activeModal.platform.name,
-          gameAccount: activeModal.platform.boundAccountId || inGameIdInput.trim(),
-          amount: amt,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setModalNotice({ text: data.message, isError: false });
-        refreshUserData();
-        loadPlatforms();
-        setTimeout(closeModal, 1500);
-      } else {
-        setModalNotice({ text: data.message || 'Redemption failed', isError: true });
-      }
-    } catch (err) {
-      setModalNotice({ text: 'Connection error', isError: true });
-    } finally {
-      setIsSubmitting(false);
+  const copyToClipboard = (text, key) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedItem(key);
+      setTimeout(() => setCopiedItem(null), 2000);
     }
   };
+
+  const togglePasswordVisibility = (platformId) => {
+    setShowPasswords((prev) => ({ ...prev, [platformId]: !prev[platformId] }));
+  };
+
+  const activeAccounts = platforms.filter((p) => p.hasAccount);
 
   return (
-    <div className="min-h-screen bg-[#f0f4f9] text-slate-800 flex">
+    <div className="min-h-screen bg-[#07080b] text-slate-100 flex">
       {/* Left Sidebar */}
       <Sidebar user={user} />
 
@@ -195,215 +142,281 @@ export default function GamePlatformsPage() {
         />
 
         {/* Page Content */}
-        <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
-          {/* Title matching Screenshot image copy 7 */}
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Game Platforms
-            </h1>
+        <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-8">
+          {/* Header Title & Records Links */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2.5">
+                <Gamepad2 className="w-7 h-7 text-[#FFCC00]" />
+                <span>Sweepstakes Game Platforms</span>
+              </h1>
+              <p className="text-xs text-slate-400 mt-1">
+                Request in-game accounts, view your game credentials, and load credits directly from your Tierlock wallet.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/player/game-platforms/deposit-records"
+                className="text-xs font-bold text-slate-950 bg-[#FFCC00] hover:bg-yellow-300 px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+              >
+                <span>Game Deposit Records</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
-          {/* Platforms Table Container */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-slate-50/60">
-                    <th className="py-4 px-6 w-12 text-center">#</th>
-                    <th className="py-4 px-6 w-28">LOGO</th>
-                    <th className="py-4 px-6">PLATFORM NAME</th>
-                    <th className="py-4 px-6">DOWNLOAD</th>
-                    <th className="py-4 px-6">ACCOUNT</th>
-                    <th className="py-4 px-6 text-right pr-8">ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
-                  {platforms.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-12 text-center text-slate-400">
-                        Loading game platforms...
-                      </td>
-                    </tr>
-                  ) : (
-                    platforms.map((platform, idx) => {
-                      const isBound = Boolean(platform.boundAccountId);
-                      const isImageLogo = platform.logo_url && (platform.logo_url.startsWith('/') || platform.logo_url.startsWith('http'));
+          {/* MY GAME ACCOUNTS & CREDENTIALS SECTION */}
+          {activeAccounts.length > 0 && (
+            <div className="bg-[#101117] rounded-3xl p-6 sm:p-7 border border-[#FFCC00]/30 shadow-[0_0_40px_rgba(255,204,0,0.06)] space-y-5">
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black text-white uppercase tracking-wide">
+                      My Game Accounts &amp; Credentials
+                    </h2>
+                    <p className="text-[11px] text-slate-400">
+                      Use these credentials to log in to the official game apps. Kept safe and confidential.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-[#FFCC00] bg-[#FFCC00]/10 border border-[#FFCC00]/30 px-3 py-1 rounded-full">
+                  {activeAccounts.length} Active {activeAccounts.length === 1 ? 'Account' : 'Accounts'}
+                </span>
+              </div>
 
-                      return (
-                        <tr
-                          key={platform.id || platform._id || idx}
-                          className="hover:bg-slate-50/60 transition group"
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeAccounts.map((p) => {
+                  const isVisible = showPasswords[p.id];
+                  return (
+                    <div
+                      key={p.id}
+                      className="bg-[#181922] border border-white/10 hover:border-[#FFCC00]/40 rounded-2xl p-4 space-y-3 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-black border border-white/10 overflow-hidden shrink-0">
+                          <img
+                            src={p.logo_url}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.target.src = '/images/games/juwa.jpg'; }}
+                          />
+                        </div>
+                        <div className="overflow-hidden flex-1">
+                          <h3 className="font-bold text-white text-sm truncate">{p.name}</h3>
+                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                            Account Ready
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Credentials Box */}
+                      <div className="bg-[#0e0f15] border border-white/5 rounded-xl p-3 space-y-2 text-xs">
+                        {/* Username */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400 text-[11px]">Username:</span>
+                          <div className="flex items-center gap-1.5 font-mono font-bold text-[#FFCC00]">
+                            <span>{p.game_username}</span>
+                            <button
+                              onClick={() => copyToClipboard(p.game_username, `${p.id}-user`)}
+                              className="text-slate-400 hover:text-white p-1"
+                              title="Copy Username"
+                            >
+                              {copiedItem === `${p.id}-user` ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Password */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400 text-[11px]">Password:</span>
+                          <div className="flex items-center gap-1.5 font-mono font-bold text-slate-200">
+                            <span>{isVisible ? p.game_password : '••••••••'}</span>
+                            <button
+                              onClick={() => togglePasswordVisibility(p.id)}
+                              className="text-slate-400 hover:text-white p-1"
+                              title={isVisible ? 'Hide Password' : 'Show Password'}
+                            >
+                              {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(p.game_password, `${p.id}-pass`)}
+                              className="text-slate-400 hover:text-white p-1"
+                              title="Copy Password"
+                            >
+                              {copiedItem === `${p.id}-pass` ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => openDepositModal(p)}
+                          className="flex-1 py-2 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1"
                         >
-                          {/* 1. Number # */}
-                          <td className="py-4 px-6 text-center text-slate-600 font-medium">
-                            {idx + 1}
-                          </td>
+                          <Wallet className="w-3.5 h-3.5" />
+                          <span>Load Credits</span>
+                        </button>
+                        <a
+                          href={p.download_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition"
+                          title="Download APK / Play Game"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-                          {/* 2. Logo */}
-                          <td className="py-4 px-6">
-                            <div className="w-20 h-11 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 flex items-center justify-center shadow-sm">
-                              <img
-                                src={isImageLogo ? platform.logo_url : `/images/games/${platform.slug || 'juwa'}.jpg`}
-                                alt={platform.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = '/images/games/juwa.jpg';
-                                }}
-                              />
-                            </div>
-                          </td>
+          {/* ALL GAME PLATFORMS GRID */}
+          <div className="space-y-4">
+            <h2 className="text-base font-black text-white uppercase tracking-wide">
+              All Available Sweepstakes Platforms
+            </h2>
 
-                          {/* 3. Platform Name */}
-                          <td className="py-4 px-6">
-                            <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                              <span>{platform.name}</span>
-                            </div>
-                            {platform.tagline && (
-                              <div className="text-[11px] text-slate-400 font-normal line-clamp-1">
-                                {platform.tagline}
-                              </div>
-                            )}
-                          </td>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {platforms.map((p) => (
+                <div
+                  key={p.id}
+                  className="group bg-[#101117] rounded-3xl border border-white/10 hover:border-[#FFCC00]/50 p-4 transition-all duration-300 flex flex-col justify-between shadow-xs"
+                >
+                  <div>
+                    {/* Artwork Box */}
+                    <div className="w-full h-44 rounded-2xl overflow-hidden mb-3.5 bg-black relative border border-white/10">
+                      <img
+                        src={p.logo_url}
+                        alt={p.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { e.target.src = '/images/games/juwa.jpg'; }}
+                      />
+                      <div className="absolute top-2.5 right-2.5 bg-black/80 backdrop-blur-xs text-[#FFCC00] text-[10px] font-black px-2 py-0.5 rounded-md border border-[#FFCC00]/30">
+                        {p.rtp || '97% RTP'}
+                      </div>
+                    </div>
 
-                          {/* 4. Download Link */}
-                          <td className="py-4 px-6">
-                            {platform.download_url ? (
-                              <a
-                                href={platform.download_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs text-[#0077d8] hover:text-[#005fb0] hover:underline flex items-center gap-1 font-medium break-all"
-                              >
-                                <span>{platform.download_url}</span>
-                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                              </a>
-                            ) : (
-                              <span className="text-slate-400 text-xs">—</span>
-                            )}
-                          </td>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-base font-bold text-white group-hover:text-[#FFCC00] transition">
+                        {p.name}
+                      </h3>
+                      {p.hasAccount ? (
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                          Account Created
+                        </span>
+                      ) : p.hasPendingRequest ? (
+                        <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Clock className="w-3 h-3 animate-spin" />
+                          <span>Load Pending</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                          Ready to Load
+                        </span>
+                      )}
+                    </div>
 
-                          {/* 5. In-Game Account */}
-                          <td className="py-4 px-6">
-                            {isBound ? (
-                              <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-blue-200">
-                                <span>{platform.boundAccountId}</span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 font-medium text-sm">—</span>
-                            )}
-                          </td>
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mt-1">
+                      {p.tagline || 'Popular fish games & slot reels with high sweepstakes payouts.'}
+                    </p>
+                  </div>
 
-                          {/* 6. Actions (Deposit, Withdrawal, Bind) */}
-                          <td className="py-4 px-6 text-right pr-8">
-                            <div className="inline-flex items-center gap-2">
-                              {/* Deposit button */}
-                              {isBound ? (
-                                <button
-                                  onClick={() => openModal('deposit', platform)}
-                                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition active:scale-95"
-                                >
-                                  Deposit
-                                </button>
-                              ) : (
-                                <button
-                                  disabled
-                                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#e8edf4] text-slate-400 cursor-not-allowed"
-                                >
-                                  Deposit
-                                </button>
-                              )}
+                  {/* Actions */}
+                  <div className="mt-4 pt-3.5 border-t border-white/10 flex items-center gap-2">
+                    <a
+                      href={p.download_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition flex items-center gap-1"
+                      title="Download APK / Web Play"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>App</span>
+                    </a>
 
-                              {/* Withdrawal button */}
-                              {isBound ? (
-                                <button
-                                  onClick={() => openModal('withdraw', platform)}
-                                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#0077d8] hover:bg-[#0066be] text-white shadow-sm transition active:scale-95"
-                                >
-                                  Withdrawal
-                                </button>
-                              ) : (
-                                <button
-                                  disabled
-                                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#e8edf4] text-slate-400 cursor-not-allowed"
-                                >
-                                  Withdrawal
-                                </button>
-                              )}
-
-                              {/* Bind / Change button */}
-                              <button
-                                onClick={() => openModal('bind', platform)}
-                                className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm active:scale-95 ${
-                                  isBound
-                                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                                    : 'bg-[#0077d8] hover:bg-[#0066be] text-white'
-                                }`}
-                              >
-                                {isBound ? 'Change' : 'Bind'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                    <button
+                      onClick={() => openDepositModal(p)}
+                      className="flex-1 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wide rounded-xl transition flex items-center justify-center gap-1.5 shadow-md"
+                    >
+                      <Wallet className="w-3.5 h-3.5" />
+                      <span>{p.hasAccount ? 'Load Credits' : 'Create & Load'}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </main>
       </div>
 
-      {/* Floating Orange $5 Freeplay Button */}
-      <FreeplayModal
-        isOpen={isFreeplayOpen}
-        onClose={() => setIsFreeplayOpen(false)}
-        onClaimSuccess={refreshUserData}
-      />
-
-      {/* WhatsApp Support Live Chat Drawer */}
-      <WhatsAppChat
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        user={user}
-      />
-
-      {/* Action Modals */}
+      {/* GAME DEPOSIT / LOAD MODAL */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-slate-800 space-y-5">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#0077d8] flex items-center justify-center font-bold">
-                  {activeModal.type === 'bind' && <LinkIcon className="w-4 h-4" />}
-                  {activeModal.type === 'deposit' && <ArrowDownLeft className="w-4 h-4 text-emerald-600" />}
-                  {activeModal.type === 'withdraw' && <ArrowUpRight className="w-4 h-4 text-blue-600" />}
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#101117] border border-[#FFCC00]/30 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center">
+                  <Gamepad2 className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-bold text-slate-900">
-                  {activeModal.type === 'bind' && `Bind Account: ${activeModal.platform.name}`}
-                  {activeModal.type === 'deposit' && `Transfer to ${activeModal.platform.name}`}
-                  {activeModal.type === 'withdraw' && `Redeem from ${activeModal.platform.name}`}
-                </h3>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">
+                    Load {activeModal.platform.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Wallet to Game Credit Transfer
+                  </p>
+                </div>
               </div>
               <button
                 onClick={closeModal}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+                className="text-slate-400 hover:text-white text-lg font-bold p-1"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
-            {/* Notice banner */}
+            {/* User Wallet Balance Snapshot */}
+            <div className="bg-[#181922] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between text-xs">
+              <span className="text-slate-400">Available Wallet Balance:</span>
+              <span className="font-mono font-black text-[#FFCC00] text-sm">
+                ${Number(user?.wallet_balance || 0).toFixed(2)} USD
+              </span>
+            </div>
+
+            {/* Informational Message */}
+            <div className="p-3 bg-[#FFCC00]/10 border border-[#FFCC00]/25 rounded-2xl text-[11px] text-[#FFCC00] leading-relaxed flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                {activeModal.platform.hasAccount ? (
+                  <span>Credits will be loaded to your active game account: <strong>{activeModal.platform.game_username}</strong> upon admin approval.</span>
+                ) : (
+                  <span>Admin will create your new official game account, configure your username &amp; password, and load your credits. Your credentials will appear directly on your dashboard.</span>
+                )}
+              </div>
+            </div>
+
             {modalNotice.text && (
-              <div
-                className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
-                  modalNotice.isError
-                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                }`}
-              >
+              <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2 ${
+                modalNotice.isError
+                  ? 'bg-red-950/40 border border-red-500/40 text-red-400'
+                  : 'bg-emerald-950/40 border border-emerald-500/40 text-emerald-400'
+              }`}>
                 {modalNotice.isError ? (
                   <AlertCircle className="w-4 h-4 shrink-0" />
                 ) : (
@@ -413,160 +426,76 @@ export default function GamePlatformsPage() {
               </div>
             )}
 
-            {/* Modal Form: Bind */}
-            {activeModal.type === 'bind' && (
-              <form onSubmit={handleBindSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Game Username or In-Game Account ID
-                  </label>
-                  <input
-                    type="text"
-                    value={inGameIdInput}
-                    onChange={(e) => setInGameIdInput(e.target.value)}
-                    placeholder="e.g. alex_slots99"
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900"
-                  />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Enter the exact username you use inside {activeModal.platform.name}.
-                  </p>
-                </div>
-
-                <div className="flex gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 py-2.5 rounded-xl bg-[#0077d8] hover:bg-[#0066be] text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Saving...' : 'Save & Bind'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* Modal Form: Deposit from Wallet to Game */}
-            {activeModal.type === 'deposit' && (
-              <form onSubmit={handleDepositSubmit} className="space-y-4">
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Available Wallet Balance:</span>
-                  <span className="font-bold text-emerald-600 text-sm">
-                    ${Number(user?.wallet_balance || 0).toFixed(2)}
-                  </span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Transfer Amount ($)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="any"
-                    value={amountInput}
-                    onChange={(e) => setAmountInput(e.target.value)}
-                    placeholder="Enter amount"
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-900"
-                  />
-                </div>
-
-                <div className="grid grid-cols-4 gap-2">
-                  {['10', '20', '50', '100'].map((amt) => (
+            <form onSubmit={handleDepositSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Select Load Amount (USD)
+                </label>
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {['10', '20', '50', '100'].map((val) => (
                     <button
-                      key={amt}
+                      key={val}
                       type="button"
-                      onClick={() => setAmountInput(amt)}
-                      className={`py-1.5 rounded-lg text-xs font-bold transition border ${
-                        amountInput === amt
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      onClick={() => setAmountInput(val)}
+                      className={`py-2 rounded-xl text-xs font-bold font-mono transition ${
+                        amountInput === val
+                          ? 'bg-[#FFCC00] text-slate-950 font-black shadow-sm'
+                          : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
                       }`}
                     >
-                      ${amt}
+                      ${val}
                     </button>
                   ))}
                 </div>
 
-                <div className="flex gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Transferring...' : 'Transfer to Game'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* Modal Form: Withdraw from Game to Wallet */}
-            {activeModal.type === 'withdraw' && (
-              <form onSubmit={handleWithdrawSubmit} className="space-y-4">
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Game Platform:</span>
-                    <span className="font-bold text-slate-800">{activeModal.platform.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Bound Account:</span>
-                    <span className="font-bold text-blue-600">
-                      {activeModal.platform.boundAccountId || 'N/A'}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Redemption Amount ($)
-                  </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                   <input
                     type="number"
                     min="1"
-                    step="any"
+                    step="1"
+                    required
                     value={amountInput}
                     onChange={(e) => setAmountInput(e.target.value)}
-                    placeholder="Enter amount"
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900"
+                    placeholder="Enter custom amount"
+                    className="w-full bg-[#181922] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#FFCC00] font-mono font-bold"
                   />
                 </div>
+              </div>
 
-                <div className="flex gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 py-2.5 rounded-xl bg-[#0077d8] hover:bg-[#0066be] text-white text-xs font-bold transition shadow-sm disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Redeeming...' : 'Redeem to Wallet'}
-                  </button>
-                </div>
-              </form>
-            )}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black py-3 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-yellow-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                      <span>Submitting Request...</span>
+                    </>
+                  ) : (
+                    <span>Submit Game Load Request (${amountInput || '0'})</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
+      {/* WhatsApp Chat & Freeplay Modals */}
+      <WhatsAppChat
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        user={user}
+      />
+      <FreeplayModal
+        isOpen={isFreeplayOpen}
+        onClose={() => setIsFreeplayOpen(false)}
+        user={user}
+        onClaimed={refreshUserData}
+      />
     </div>
   );
 }

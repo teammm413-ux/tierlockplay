@@ -18,7 +18,9 @@ import {
   ShieldCheck,
   Loader2,
   RefreshCw,
-  Clock
+  Clock,
+  Zap,
+  CreditCard
 } from 'lucide-react';
 
 const DENOMINATIONS = [
@@ -35,8 +37,8 @@ const DENOMINATIONS = [
 
 export default function DepositPage() {
   const [user, setUser] = useState(null);
-  const [payUsing, setPayUsing] = useState('Cash APP');
-  const [selectedIndex, setSelectedIndex] = useState(0); // default $20 (meets min test amount)
+  const [payUsing, setPayUsing] = useState('Cash App');
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
@@ -47,7 +49,7 @@ export default function DepositPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [isPaymentSuccess, setIsPaymentSuccess] = useState(false);
 
-  const selectedDenom = DENOMINATIONS[selectedIndex] || DENOMINATIONS[2];
+  const selectedDenom = DENOMINATIONS[selectedIndex] || DENOMINATIONS[0];
 
   const refreshUserData = async () => {
     try {
@@ -60,7 +62,7 @@ export default function DepositPage() {
   useEffect(() => {
     refreshUserData();
 
-    // Check if user was redirected back from TapTapUp
+    // Check if user was redirected back from payment gateway
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const orderNo = params.get('order_no');
@@ -68,7 +70,7 @@ export default function DepositPage() {
       const status = params.get('status');
 
       if (orderNo || orderId || status === 'return') {
-        setStatusMessage('Verifying payment with TapTapUp gateway...');
+        setStatusMessage('Verifying payment confirmation...');
         verifyOrderPayment(orderNo);
       }
     }
@@ -85,43 +87,13 @@ export default function DepositPage() {
       const data = await res.json();
       if (data.success && data.status === 'Approved') {
         setIsPaymentSuccess(true);
-        setStatusMessage('Payment completed! Your wallet balance has been credited.');
+        setStatusMessage('Payment completed successfully! Your wallet balance has been credited.');
         refreshUserData();
       } else {
-        setStatusMessage(data.message || 'Payment is still pending on TapTapUp.');
+        setStatusMessage(data.message || 'Payment is awaiting confirmation from gateway.');
       }
     } catch (err) {
-      setStatusMessage('Could not verify status. Please check your deposit records.');
-    } finally {
-      setIsCheckingStatus(false);
-    }
-  };
-
-  const handleSimulateWebhook = async (orderNo, amount) => {
-    setIsCheckingStatus(true);
-    setStatusMessage('Simulating gateway payment.completed webhook...');
-    try {
-      const res = await fetch('/api/webhooks/taptapup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: 'payment.completed',
-          status: 'completed',
-          merchant_reference: String(orderNo),
-          amount: parseFloat(amount),
-          order_id: 'SANDBOX_' + Date.now(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.status === 'Approved') {
-        setIsPaymentSuccess(true);
-        setStatusMessage('Payment verified via Webhook! Balance credited to wallet.');
-        await refreshUserData();
-      } else {
-        setStatusMessage(data.message || 'Webhook verification failed.');
-      }
-    } catch (err) {
-      setStatusMessage('Webhook simulation network error.');
+      setStatusMessage('Verification in progress. Please check your deposit records in 1 minute.');
     } finally {
       setIsCheckingStatus(false);
     }
@@ -157,7 +129,7 @@ export default function DepositPage() {
           method: payUsing,
           redirectUrl: data.redirectUrl || null,
           token: data.token || null,
-          paymentGateway: data.paymentGateway || 'TapTapUp',
+          paymentGateway: data.paymentGateway || 'Hosted Gateway',
           status: data.status || 'Created',
           expiresAt: data.expiresAt || null,
         });
@@ -182,7 +154,7 @@ export default function DepositPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f4f9] text-slate-800 flex">
+    <div className="min-h-screen bg-[#07080b] text-slate-100 flex">
       {/* Left Sidebar */}
       <Sidebar user={user} />
 
@@ -196,196 +168,150 @@ export default function DepositPage() {
 
         {/* Page Content */}
         <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
-          {/* Title matching Screenshot image copy 4 */}
+          {/* Title Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                Wallet Deposit
+              <h1 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                <Wallet className="w-6 h-6 text-[#FFCC00]" />
+                <span>Wallet Deposit</span>
               </h1>
-              <p className="text-xs text-slate-500 mt-1">
-                Instant deposit gateway powered by TapTapUp & Cash App
+              <p className="text-xs text-slate-400 mt-1">
+                Instant secure funding for your Tierlock master wallet via Cash App, Apple Pay, &amp; Card.
               </p>
             </div>
             <Link
               href="/player/wallet/deposit-records"
-              className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100/70 px-4 py-2 rounded-xl transition w-fit"
+              className="text-xs font-bold text-slate-950 bg-[#FFCC00] hover:bg-yellow-300 px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
             >
-              Deposit Records &rarr;
+              <span>Deposit Records</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          {/* Success Banner if returned from TapTapUp */}
+          {/* Success Banner */}
           {isPaymentSuccess && (
-            <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 flex items-center justify-between gap-4">
+            <div className="p-5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-6 h-6 shrink-0 text-emerald-400" />
                 <div>
-                  <h4 className="font-bold text-sm text-emerald-950">Deposit Succeeded!</h4>
-                  <p className="text-xs text-emerald-800/90">{statusMessage || 'Your funds have been credited to your wallet.'}</p>
+                  <h3 className="font-bold text-sm">Payment Verified!</h3>
+                  <p className="text-xs text-emerald-300">
+                    Your wallet balance has been updated in real-time. You can now load any game platform!
+                  </p>
                 </div>
               </div>
               <Link
                 href="/player/game-platforms"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-wide shrink-0 transition"
               >
-                Play Games Now
+                Go Play Games &rarr;
               </Link>
             </div>
           )}
 
-          {/* If order created, show payment instruction receipt & TapTapUp Checkout button */}
+          {/* CREATED ORDER PAYMENT SCREEN */}
           {createdOrder ? (
-            <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-2xl border border-slate-200/80 shadow-sm space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-emerald-600">
-                  <CheckCircle2 className="w-8 h-8 shrink-0" />
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">Order Initialized</h2>
-                    <p className="text-xs text-slate-500">Order #{createdOrder.orderNo}</p>
-                  </div>
+            <div className="max-w-2xl mx-auto bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/30 shadow-[0_0_50px_rgba(255,204,0,0.08)] space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#FFCC00] animate-pulse"></span>
+                  <span className="text-xs font-black uppercase text-[#FFCC00] tracking-wider">
+                    Secure Instant Checkout
+                  </span>
                 </div>
-                {isPaymentSuccess || createdOrder.status === 'Approved' ? (
-                  <span className="px-3.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-xs">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    Approved & Credited
-                  </span>
-                ) : createdOrder.status === 'Expired' ? (
-                  <span className="px-3.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
-                    Expired (Unpaid)
-                  </span>
-                ) : (
-                  <span className="px-3.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-amber-600" />
-                    Awaiting Payment (30m)
-                  </span>
-                )}
+                <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-slate-300">
+                  256-Bit SSL Encrypted
+                </span>
               </div>
 
-              {/* Revsol Hosted Checkout & Verification Card */}
-              <div className="bg-gradient-to-br from-[#0b1728] to-[#1a2e4a] text-white p-6 rounded-2xl shadow-md space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-amber-400" />
-                    <span className="text-xs font-bold tracking-wider uppercase text-amber-400">
-                      Secure Instant Checkout
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-amber-300">
-                    256-Bit SSL Encrypted
-                  </span>
-                </div>
+              <div>
+                <h3 className="text-lg font-black text-white uppercase tracking-tight">Complete Payment Online</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Click the button below to complete checkout on the secure hosted payment page. Your wallet credits will be loaded automatically.
+                </p>
+              </div>
 
-                <div>
-                  <h3 className="text-base font-bold text-white">Complete Payment Online</h3>
-                  <p className="text-xs text-slate-300 mt-1">
-                    Click the button below to complete checkout on secure hosted gateway, or use <strong>Simulate Webhook</strong> for instant sandbox testing.
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-1">
-                  {createdOrder.redirectUrl ? (
-                    <a
-                      href={createdOrder.redirectUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg"
-                    >
-                      <span>Pay ${createdOrder.paidAmount} USD on Revsol</span>
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    onClick={() => verifyOrderPayment(createdOrder.orderNo, createdOrder.token)}
-                    disabled={isCheckingStatus}
-                    className="py-3 px-4 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition disabled:opacity-50"
-                    title="Check if payment completed"
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                {createdOrder.redirectUrl ? (
+                  <a
+                    href={createdOrder.redirectUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-3.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(255,204,0,0.3)]"
                   >
-                    {isCheckingStatus ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    <span>Check Status</span>
-                  </button>
-                </div>
+                    <span>Pay ${createdOrder.paidAmount} USD Securely</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                ) : null}
 
-                {/* Sandbox Instant Simulation Button */}
-                <div className="pt-3 border-t border-white/10 space-y-2.5">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                        <span>🧪 Sandbox API Verification</span>
-                      </div>
-                      <p className="text-[11px] text-slate-300 mt-0.5">
-                        Client note: <em>taptapup.xyz is for API testing only (no need to access web site)</em>. Click button to simulate completed payment.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleSimulateWebhook(createdOrder.orderNo, createdOrder.paidAmount)}
-                      disabled={isCheckingStatus || isPaymentSuccess}
-                      className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50 shadow-md active:scale-95"
-                    >
-                      <span>⚡ Simulate Webhook (Test Pass)</span>
-                    </button>
-                  </div>
-                </div>
-
-                {statusMessage && (
-                  <div className={`text-xs p-3 rounded-xl border ${
-                    isPaymentSuccess
-                      ? 'text-emerald-300 bg-emerald-950/50 border-emerald-500/50 font-semibold'
-                      : 'text-amber-200 bg-black/30 border-white/10'
-                  }`}>
-                    {statusMessage}
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => verifyOrderPayment(createdOrder.orderNo, createdOrder.token)}
+                  disabled={isCheckingStatus}
+                  className="py-3 px-5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                  title="Check if payment completed"
+                >
+                  {isCheckingStatus ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-[#FFCC00]" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                  <span>Check Status</span>
+                </button>
               </div>
+
+              {statusMessage && (
+                <div className={`text-xs p-3.5 rounded-xl border ${
+                  isPaymentSuccess
+                    ? 'text-emerald-300 bg-emerald-950/50 border-emerald-500/50 font-semibold'
+                    : 'text-[#FFCC00] bg-[#FFCC00]/10 border-[#FFCC00]/30'
+                }`}>
+                  {statusMessage}
+                </div>
+              )}
 
               {/* Order breakdown summary */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-sm">
+              <div className="bg-[#181922] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Deposit Amount:</span>
-                  <span className="font-bold text-slate-900">${createdOrder.paidAmount} USD</span>
+                  <span className="text-slate-400">Deposit Amount:</span>
+                  <span className="font-bold text-white">${createdOrder.paidAmount} USD</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Wallet Credits to Receive:</span>
-                  <span className="font-bold text-emerald-600">${createdOrder.receivedAmount}</span>
+                  <span className="text-slate-400">Wallet Credits to Receive:</span>
+                  <span className="font-black text-[#FFCC00] text-sm">${createdOrder.receivedAmount}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Payment Gateway / Channel:</span>
-                  <span className="font-semibold text-slate-800">
-                    {createdOrder.redirectUrl ? 'TapTapUp Hosted Payment' : createdOrder.method}
+                  <span className="text-slate-400">Payment Gateway / Channel:</span>
+                  <span className="font-semibold text-slate-200">
+                    {createdOrder.method}
                   </span>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-                  <span className="text-slate-500">Merchant Reference:</span>
+                <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                  <span className="text-slate-400">Merchant Reference:</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-slate-800">{createdOrder.orderNo}</span>
+                    <span className="font-mono font-bold text-white">{createdOrder.orderNo}</span>
                     <button
                       onClick={() => copyToClipboard(createdOrder.orderNo)}
-                      className="text-slate-400 hover:text-slate-700 p-1"
+                      className="text-slate-400 hover:text-white p-1"
                       title="Copy Order No"
                     >
-                      {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed flex items-start gap-2.5">
-                <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-2xl bg-[#FFCC00]/10 border border-[#FFCC00]/25 text-xs text-[#FFCC00] leading-relaxed flex items-start gap-2.5">
+                <Clock className="w-4 h-4 text-[#FFCC00] shrink-0 mt-0.5" />
                 <div>
-                  <strong>30-Minute Payment Window:</strong> This deposit order is valid for <strong>30 minutes</strong>. Unpaid or abandoned checkouts expire automatically. Once you complete payment on the checkout page, the gateway webhook will credit your balance instantly in real-time.
+                  <strong>30-Minute Payment Window:</strong> This deposit order is valid for <strong>30 minutes</strong>. Unpaid or abandoned checkouts expire automatically. Once you complete checkout, credits appear in your wallet instantly.
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <Link
                   href="/player/wallet/deposit-records"
-                  className="flex-1 py-3 bg-[#1e293b] hover:bg-[#0f172a] text-white text-center font-bold text-xs rounded-xl transition"
+                  className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white text-center font-bold text-xs rounded-xl transition"
                 >
                   View Deposit Records
                 </Link>
@@ -394,7 +320,7 @@ export default function DepositPage() {
                     setCreatedOrder(null);
                     setStatusMessage('');
                   }}
-                  className="flex-1 py-3 border border-slate-300 text-slate-700 hover:bg-slate-50 text-center font-semibold text-xs rounded-xl transition"
+                  className="flex-1 py-3 border border-white/20 text-slate-300 hover:bg-white/5 text-center font-semibold text-xs rounded-xl transition"
                 >
                   Make Another Deposit
                 </button>
@@ -406,7 +332,7 @@ export default function DepositPage() {
               <div className="lg:col-span-2 space-y-6">
                 {/* Pay Using */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-3 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-300 mb-3 uppercase tracking-wider">
                     Pay Using Channel
                   </label>
                   <div className="flex flex-wrap gap-2.5">
@@ -415,7 +341,7 @@ export default function DepositPage() {
                       { name: 'Google & Apple Pay', icon: '📱', badge: '1-Click' },
                       { name: 'PayPal', icon: '🅿️', badge: 'Secured' },
                       { name: 'Chime', icon: '🏦', badge: 'Direct' },
-                      { name: 'BTC Lightning', icon: '⚡', badge: 'Crypto' },
+                      { name: 'Debit / Credit Card', icon: '💳', badge: 'Instant' },
                     ].map((channel) => {
                       const isActive = payUsing === channel.name;
                       return (
@@ -423,16 +349,16 @@ export default function DepositPage() {
                           key={channel.name}
                           type="button"
                           onClick={() => setPayUsing(channel.name)}
-                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 ${
+                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                             isActive
-                              ? 'bg-[#1e293b] text-white ring-2 ring-[#1e293b]/20 shadow-md'
-                              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                              ? 'bg-[#FFCC00] text-slate-950 font-black shadow-md'
+                              : 'bg-[#101117] text-slate-300 border border-white/10 hover:border-white/30'
                           }`}
                         >
                           <span>{channel.icon}</span>
                           <span>{channel.name}</span>
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            isActive ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-100 text-slate-500'
+                            isActive ? 'bg-slate-950 text-[#FFCC00] font-black' : 'bg-white/10 text-slate-400'
                           }`}>
                             {channel.badge}
                           </span>
@@ -445,12 +371,9 @@ export default function DepositPage() {
                 {/* Select Amount Grid */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Select Amount
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Select Deposit Amount
                     </label>
-                    <span className="text-[11px] text-amber-700 font-semibold bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
-                      Min: $20.00 (TapTapUp Sandbox)
-                    </span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
                     {DENOMINATIONS.map((item, idx) => {
@@ -459,17 +382,17 @@ export default function DepositPage() {
                         <div
                           key={item.credits}
                           onClick={() => setSelectedIndex(idx)}
-                          className={`bg-white rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-between shadow-sm relative ${
+                          className={`bg-[#101117] rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-between relative ${
                             isSelected
-                              ? 'border-2 border-blue-600 shadow-md ring-2 ring-blue-500/10'
-                              : 'border border-slate-200 hover:border-slate-300 hover:shadow'
+                              ? 'border-2 border-[#FFCC00] shadow-[0_0_25px_rgba(255,204,0,0.15)] ring-1 ring-[#FFCC00]'
+                              : 'border border-white/10 hover:border-white/30'
                           }`}
                         >
-                          <span className="font-black text-slate-900 text-lg tracking-tight">
-                            {item.credits}
+                          <span className="font-black text-white text-lg tracking-tight">
+                            ${item.credits}
                           </span>
-                          <span className="bg-[#1e293b] text-white text-[11px] font-bold px-3 py-1 rounded-md mt-2 tracking-wide">
-                            USD{item.usd}
+                          <span className="bg-[#181922] text-[#FFCC00] text-[11px] font-bold px-3 py-1 rounded-md mt-2 tracking-wide border border-white/10">
+                            USD {item.usd}
                           </span>
                         </div>
                       );
@@ -478,45 +401,43 @@ export default function DepositPage() {
                 </div>
               </div>
 
-              {/* Right Column: Order Details Card (Screenshot image copy 4) */}
+              {/* Right Column: Order Details Card */}
               <div className="lg:col-span-1">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-5">
-                  <h2 className="text-base font-bold text-slate-900">
+                <div className="bg-[#101117] rounded-3xl p-6 border border-white/10 space-y-5 shadow-sm">
+                  <h2 className="text-base font-bold text-white uppercase tracking-wide">
                     Order Details
                   </h2>
 
-                  <div className="space-y-4 text-sm divide-y divide-slate-100">
+                  <div className="space-y-4 text-xs divide-y divide-white/10">
                     <div className="flex justify-between items-center pt-2">
-                      <span className="text-slate-500 text-xs">Deposit Amount</span>
-                      <span className="font-bold text-slate-900">${selectedDenom.usd}</span>
+                      <span className="text-slate-400">Deposit Amount</span>
+                      <span className="font-bold text-white">${selectedDenom.usd} USD</span>
                     </div>
 
                     <div className="flex justify-between items-center pt-3">
-                      <span className="text-slate-500 text-xs">Actual Received</span>
-                      <span className="font-bold text-emerald-600 text-base">
-                        {parseInt(selectedDenom.credits)}
+                      <span className="text-slate-400">Wallet Credits to Receive</span>
+                      <span className="font-black text-[#FFCC00] text-base font-mono">
+                        ${selectedDenom.credits}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center pt-3">
-                      <span className="text-slate-500 text-xs">Pay Using</span>
-                      <span className="font-semibold text-slate-800 text-xs">{payUsing}</span>
+                      <span className="text-slate-400">Payment Channel</span>
+                      <span className="font-semibold text-white">{payUsing}</span>
                     </div>
 
                     <div className="flex justify-between items-center pt-3">
-                      <span className="text-slate-500 text-xs">Payment Gateway</span>
-                      <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                        TapTapUp (Live API)
-                      </span>
+                      <span className="text-slate-400">Processing Fee</span>
+                      <span className="font-bold text-emerald-400 font-mono">$0.00 (Free)</span>
                     </div>
                   </div>
 
                   <button
-                    type="button"
                     onClick={handleOpenModal}
-                    className="w-full mt-4 bg-[#1e293b] hover:bg-[#0f172a] text-white font-bold py-3.5 rounded-xl uppercase tracking-wider text-xs shadow-md transition active:scale-98"
+                    className="w-full py-3.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_4px_16px_rgba(255,204,0,0.3)] flex items-center justify-center gap-2 transform hover:-translate-y-0.5 active:translate-y-0"
                   >
-                    Confirm &amp; Proceed
+                    <span>Proceed to Deposit (${selectedDenom.usd})</span>
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -525,89 +446,79 @@ export default function DepositPage() {
         </main>
       </div>
 
-      {/* Floating Orange $5 Freeplay Button */}
-      <FreeplayModal
-        isOpen={isFreeplayOpen}
-        onClose={() => setIsFreeplayOpen(false)}
-        onClaimSuccess={refreshUserData}
-      />
-
-      {/* WhatsApp Support Live Chat Drawer */}
-      <WhatsAppChat
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        user={user}
-      />
-
-      {/* Order Details Confirmation Popup Modal (Screenshot image copy 5) */}
+      {/* CONFIRM ORDER MODAL */}
       {showConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-slate-800 space-y-5">
-            <h3 className="text-center font-bold text-slate-900 text-base">
-              Order Details
-            </h3>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#101117] border border-[#FFCC00]/30 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-base font-black text-white uppercase">Confirm Deposit Order</h3>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="text-slate-400 hover:text-white font-bold"
+              >
+                ✕
+              </button>
+            </div>
 
-            <div className="space-y-3 text-xs border-y border-slate-100 py-3.5">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Pay Using</span>
-                <span className="font-medium text-slate-800">
-                  {payUsing.toLowerCase().replace(' ', '_')}
-                </span>
+            <div className="bg-[#181922] border border-white/10 rounded-2xl p-4 space-y-3 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Deposit Amount:</span>
+                <span className="font-bold text-white">${selectedDenom.usd} USD</span>
               </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Deposit Amount</span>
-                <span className="font-bold text-slate-900">${selectedDenom.usd}</span>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Wallet Credits to Receive:</span>
+                <span className="font-bold text-[#FFCC00] font-mono text-sm">${selectedDenom.credits}</span>
               </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Service Fee</span>
-                <span className="font-medium text-emerald-600">$0.00</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Actual Received</span>
-                <span className="font-bold text-emerald-600 text-sm">
-                  {parseInt(selectedDenom.credits)}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Gateway Provider</span>
-                <span className="font-bold text-blue-600">
-                  TapTapUp Secure Hosted
-                </span>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Selected Channel:</span>
+                <span className="font-bold text-white">{payUsing}</span>
               </div>
             </div>
 
-            <div className="space-y-2.5 pt-1">
-              <button
-                type="button"
-                onClick={handleConfirmOrder}
-                disabled={isSubmitting}
-                className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow transition disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Connecting Gateway...</span>
-                  </>
-                ) : (
-                  <span>Confirm</span>
-                )}
-              </button>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              You will be redirected to the secure 256-bit SSL encrypted checkout page to complete payment. Once paid, credits will reflect in your wallet instantly.
+            </p>
 
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowConfirmModal(false)}
-                className="w-full border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition"
+                className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition"
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleConfirmOrder}
+                className="flex-1 py-3 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Creating Order...</span>
+                  </>
+                ) : (
+                  <span>Confirm &amp; Pay</span>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* WhatsApp Chat & Freeplay Modals */}
+      <WhatsAppChat
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        user={user}
+      />
+      <FreeplayModal
+        isOpen={isFreeplayOpen}
+        onClose={() => setIsFreeplayOpen(false)}
+        user={user}
+        onClaimed={refreshUserData}
+      />
     </div>
   );
 }
