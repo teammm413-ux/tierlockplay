@@ -21,22 +21,19 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Password must be at least 6 characters' }, { status: 400 });
     }
 
-    // Strictly enforce valid invite code
-    if (!inviteCode || typeof inviteCode !== 'string' || !inviteCode.trim()) {
-      return NextResponse.json({
-        success: false,
-        message: 'A valid VIP invite code is required to register. Please enter your sponsor code.'
-      }, { status: 400 });
-    }
-
     await connectToDatabase();
 
-    const inviteResult = await checkInviteCode(inviteCode);
-    if (!inviteResult || !inviteResult.valid) {
-      return NextResponse.json({
-        success: false,
-        message: 'Invalid invite code. Please enter a valid VIP invite code from your sponsor.'
-      }, { status: 400 });
+    let sponsorCode = '';
+    // If an invite code is provided, validate it against system & user codes
+    if (inviteCode && typeof inviteCode === 'string' && inviteCode.trim()) {
+      const inviteResult = await checkInviteCode(inviteCode.trim());
+      if (!inviteResult || !inviteResult.valid) {
+        return NextResponse.json({
+          success: false,
+          message: 'Invalid invite code. Leave it blank if you do not have one, or check with your sponsor.'
+        }, { status: 400 });
+      }
+      sponsorCode = inviteResult.code;
     }
 
     const cleanUsername = username.trim();
@@ -96,7 +93,7 @@ export async function POST(request) {
       kyc_status: 'INCOMPLETE',
       kyc_name: '',
       invite_code: generatedInviteCode,
-      referred_by: inviteResult.code,
+      referred_by: sponsorCode || 'DIRECT',
       is_subscribed: true,
       last_login_time: now,
       last_login_ip: '127.0.0.1',
@@ -113,7 +110,7 @@ export async function POST(request) {
       is_email_verified: false,
       is_phone_verified: false,
       invite_code: generatedInviteCode,
-      referred_by: inviteResult.code,
+      referred_by: sponsorCode || 'DIRECT',
     };
 
     const token = signUserToken(newUser);
