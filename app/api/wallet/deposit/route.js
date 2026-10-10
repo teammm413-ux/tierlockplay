@@ -54,6 +54,9 @@ export async function POST(request) {
       gatewayError = err.message;
     }
 
+    const isGatewayOk = Boolean(gatewayData && gatewayData.success && gatewayData.redirectUrl);
+    const finalGatewayError = gatewayError || (gatewayData && !gatewayData.success ? (gatewayData.message || gatewayData.error || 'Payment gateway returned an error') : null);
+
     const deposit = await DepositRequest.create({
       order_no: orderNo,
       user_id: user._id.toString(),
@@ -62,7 +65,7 @@ export async function POST(request) {
       paid_amount: paid,
       received_amount: received,
       service_fee: 0.00,
-      status: gatewayData && gatewayData.success ? 'Pending' : 'Created',
+      status: isGatewayOk ? 'Pending' : 'Created',
       wallet_balance_before: balanceBefore,
       wallet_balance_after: balanceAfter,
       transaction_proof: senderCashtag || '',
@@ -76,9 +79,9 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message: gatewayData && gatewayData.success
+      message: isGatewayOk
         ? 'TapTapUp payment checkout initialized successfully!'
-        : 'Order created successfully! Please complete payment to credit your balance.',
+        : (finalGatewayError ? `Gateway notice: ${finalGatewayError}` : 'Order created successfully!'),
       orderNo: deposit.order_no,
       paidAmount: deposit.paid_amount,
       receivedAmount: deposit.received_amount,
@@ -86,7 +89,7 @@ export async function POST(request) {
       redirectUrl: gatewayData?.redirectUrl || null,
       token: gatewayData?.token || null,
       paymentGateway: deposit.payment_gateway,
-      gatewayError: gatewayError || null,
+      gatewayError: finalGatewayError,
       expiresAt: deposit.expires_at,
     });
   } catch (error) {

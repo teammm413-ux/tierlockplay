@@ -122,6 +122,12 @@ export default function DepositPage() {
 
       const data = await res.json();
       if (data.success) {
+        if (data.redirectUrl) {
+          // Immediately redirect user to the secure payment checkout page
+          window.location.href = data.redirectUrl;
+          return;
+        }
+
         setCreatedOrder({
           orderNo: data.orderNo,
           paidAmount: selectedDenom.usd,
@@ -130,6 +136,7 @@ export default function DepositPage() {
           redirectUrl: data.redirectUrl || null,
           token: data.token || null,
           paymentGateway: data.paymentGateway || 'Hosted Gateway',
+          gatewayError: data.gatewayError || null,
           status: data.status || 'Created',
           expiresAt: data.expiresAt || null,
         });
@@ -259,6 +266,23 @@ export default function DepositPage() {
                   <span>Check Status</span>
                 </button>
               </div>
+
+              {!createdOrder.redirectUrl && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-1.5">
+                  <div className="font-bold flex items-center gap-2 text-amber-400">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>Payment Gateway Notice</span>
+                  </div>
+                  <p className="text-slate-300">
+                    {createdOrder.gatewayError
+                      ? `TapTapUp gateway response: "${createdOrder.gatewayError}".`
+                      : 'Gateway checkout link was not returned by TapTapUp (Merchant credentials inactive or unauthorized).'}
+                  </p>
+                  <p className="text-[11px] text-amber-400/80">
+                    Please verify your Merchant ID and API credentials with TapTapUp / Revsol.
+                  </p>
+                </div>
+              )}
 
               {statusMessage && (
                 <div className={`text-xs p-3.5 rounded-xl border ${
