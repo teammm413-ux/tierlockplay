@@ -138,3 +138,33 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const session = getSessionFromRequest(request);
+    if (!session || !session.isAdmin) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+    }
+
+    await connectToDatabase();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ success: false, message: 'Promotion ID is required' }, { status: 400 });
+    }
+
+    const deleted = await Promotion.findByIdAndDelete(id);
+    if (!deleted) {
+      return NextResponse.json({ success: false, message: 'Promotion not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Promotion "${deleted.title}" deleted successfully.`
+    });
+  } catch (error) {
+    console.error('delete promo error:', error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}

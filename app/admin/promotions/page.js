@@ -11,7 +11,8 @@ import {
   Sparkles,
   Gift,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Trash2,
 } from 'lucide-react';
 
 export default function AdminPromotionsPage() {
@@ -20,8 +21,6 @@ export default function AdminPromotionsPage() {
   const [formData, setFormData] = useState({
     title: 'Weekend 100% Reload Match Bonus! 🎰',
     message: 'Deposit $20 or more today and get an extra $10 freeplay added to any platform of your choice!',
-    promoCode: 'VAULT100',
-    bonusAmount: '10.00',
     targetAudience: 'both', // 'subscribers' | 'unsubscribers' | 'both'
     deliveryChannel: 'both', // 'chrome' | 'email' | 'both'
   });
@@ -42,6 +41,22 @@ export default function AdminPromotionsPage() {
   useEffect(() => {
     loadCampaigns();
   }, []);
+
+  const handleDeleteCampaign = async (id, title) => {
+    if (!confirm(`Are you sure you want to delete campaign "${title}"?`)) return;
+    try {
+      const res = await fetch(`/api/admin/promotions?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setNotice({ text: `Campaign "${title}" deleted successfully!`, isError: false });
+        loadCampaigns();
+      } else {
+        setNotice({ text: data.message || 'Failed to delete campaign', isError: true });
+      }
+    } catch (err) {
+      setNotice({ text: 'Error deleting campaign', isError: true });
+    }
+  };
 
   const handleDispatch = async (e) => {
     e.preventDefault();
@@ -156,46 +171,17 @@ export default function AdminPromotionsPage() {
                 />
               </div>
 
-              {/* Promo Code & Bonus Amount */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-slate-700 font-bold uppercase tracking-wider block mb-1.5">
-                    Promo Code (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.promoCode}
-                    onChange={(e) => setFormData({ ...formData, promoCode: e.target.value })}
-                    placeholder="e.g. GOLD777"
-                    className="w-full bg-slate-50 border border-slate-200 text-amber-600 font-mono font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white uppercase placeholder-slate-400 transition"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 font-bold uppercase tracking-wider block mb-1.5">
-                    Bonus Value ($ Freeplay)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.bonusAmount}
-                    onChange={(e) => setFormData({ ...formData, bonusAmount: e.target.value })}
-                    placeholder="10.00"
-                    className="w-full bg-slate-50 border border-slate-200 text-emerald-600 font-mono font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition"
-                  />
-                </div>
-              </div>
-
-              {/* Promo Message */}
+              {/* Promotional Message Body */}
               <div>
                 <label className="text-slate-700 font-bold uppercase tracking-wider block mb-1.5">
                   Promotional Message Body
                 </label>
                 <textarea
-                  rows={3}
+                  rows={4}
                   required
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  placeholder="Describe the bonus running right now (e.g. Deposit $20 or more today and get an extra $10 freeplay added to any platform of your choice!)..."
                   className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-xs p-3.5 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white leading-relaxed transition"
                 />
               </div>
@@ -270,7 +256,7 @@ export default function AdminPromotionsPage() {
               <button
                 type="submit"
                 disabled={isDispatching}
-                className="w-full btn-gold py-4 rounded-xl text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md disabled:opacity-50 mt-4"
+                className="w-full btn-gold py-4 rounded-xl text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md disabled:opacity-50 mt-4 cursor-pointer active:scale-98"
               >
                 <Send className="w-4 h-4" />
                 <span>{isDispatching ? 'Dispatching Broadcast...' : 'Dispatch Promotional Campaign'}</span>
@@ -281,31 +267,53 @@ export default function AdminPromotionsPage() {
           {/* Past Campaigns Log */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
             <div>
-              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
-                Campaign History ({campaigns.length})
+              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
+                <span>Campaign History ({campaigns.length})</span>
+                <span className="text-[10px] text-slate-400 font-normal">Active Alerts</span>
               </h2>
 
-              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              <div className="space-y-3 max-h-[520px] overflow-y-auto">
                 {campaigns.length === 0 ? (
                   <div className="text-center py-12 text-xs text-slate-400">
-                    No campaigns dispatched yet. Use the form to launch your first blast.
+                    No active campaigns. Use the form to launch a new promotional announcement.
                   </div>
                 ) : (
                   campaigns.map((c) => (
-                    <div key={c.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-                      <div className="text-xs font-bold text-slate-900 line-clamp-1">{c.title}</div>
-                      <p className="text-[11px] text-slate-600 line-clamp-2">{c.message}</p>
-                      <div className="pt-1 flex items-center justify-between text-[10px]">
-                        <span className="font-mono text-amber-600 font-bold">
-                          {c.promo_code ? `Code: ${c.promo_code}` : 'No code'}
+                    <div key={c.id || c._id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 hover:border-slate-300 transition">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-xs font-bold text-slate-900 leading-snug">{c.title}</div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCampaign(c.id || c._id, c.title)}
+                          className="text-rose-500 hover:text-white p-1 rounded-lg hover:bg-rose-600 transition shrink-0 cursor-pointer"
+                          title="Delete this campaign"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-line bg-white/70 p-2 rounded-lg border border-slate-100">
+                        {c.message}
+                      </p>
+
+                      <div className="flex items-center justify-between text-[10px] pt-1">
+                        <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                          {c.total_sent || 0} Sent
                         </span>
-                        <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
-                          {c.total_sent} Sent
+                        <span className="text-slate-400 font-mono text-[9px]">
+                          {c.created_at ? new Date(c.created_at).toLocaleString() : ''}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-[9px] text-slate-400 pt-1 border-t border-slate-200">
+
+                      <div className="text-[9px] text-slate-400 pt-1 border-t border-slate-200 flex items-center justify-between">
                         <span className="capitalize">{c.target_audience} • {c.delivery_channel}</span>
-                        <span>{c.created_at ? c.created_at.substring(0, 16) : ''}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCampaign(c.id || c._id, c.title)}
+                          className="text-rose-600 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Delete</span>
+                        </button>
                       </div>
                     </div>
                   ))
