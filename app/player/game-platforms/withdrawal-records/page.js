@@ -167,7 +167,7 @@ export default function GameWithdrawalRecordsPage() {
   const pendingCount = records.filter((r) => r.status === 'Pending').length;
 
   return (
-    <div className="min-h-screen bg-[#f0f4f9] text-slate-800 flex">
+    <div className="min-h-screen bg-[#07080b] text-slate-100 flex">
       <Sidebar user={user} />
 
       <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
@@ -179,20 +179,20 @@ export default function GameWithdrawalRecordsPage() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
                 Game Platform Withdrawal Records
               </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Real-time history of game chips redeemed back into main wallet balance.
               </p>
             </div>
 
             <div className="flex items-center gap-2.5">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FFCC00]/10 text-[#FFCC00] border border-[#FFCC00]/30 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-[#FFCC00] animate-pulse"></span>
                 <span>Live Sync</span>
                 {lastUpdated && (
-                  <span className="text-[10px] text-emerald-600/80 font-mono ml-0.5">
+                  <span className="text-[10px] text-[#FFCC00]/80 font-mono ml-0.5">
                     {lastUpdated.toLocaleTimeString()}
                   </span>
                 )}
@@ -203,35 +203,35 @@ export default function GameWithdrawalRecordsPage() {
                 onClick={() => fetchRecords({}, false)}
                 disabled={isLoading || isRefreshing}
                 title="Refresh Records"
-                className="inline-flex items-center justify-center p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-2xs transition disabled:opacity-50"
+                className="inline-flex items-center justify-center p-2 rounded-xl bg-[#181922] border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition disabled:opacity-50"
               >
-                <RotateCw className={`w-4 h-4 ${isRefreshing || isLoading ? 'animate-spin text-amber-500' : ''}`} />
+                <RotateCw className={`w-4 h-4 ${isRefreshing || isLoading ? 'animate-spin text-[#FFCC00]' : ''}`} />
               </button>
             </div>
           </div>
 
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Redemptions</span>
-              <div className="text-xl font-black text-slate-900 mt-1">{records.length}</div>
-              <span className="text-[10px] text-slate-400">Total in current filter</span>
+            <div className="bg-[#101117] rounded-2xl p-4 border border-white/10">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Redemptions</span>
+              <div className="text-xl font-black text-white mt-1 font-mono">{records.length}</div>
+              <span className="text-[10px] text-slate-500">Total in current filter</span>
             </div>
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
-              <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">Redeemed to Wallet</span>
-              <div className="text-xl font-black text-slate-900 mt-1">${totalAmountSum.toFixed(2)}</div>
-              <span className="text-[10px] text-emerald-600 font-semibold">{approvedCount} Completed</span>
+            <div className="bg-[#101117] rounded-2xl p-4 border border-white/10">
+              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">Redeemed to Wallet</span>
+              <div className="text-xl font-black text-[#FFCC00] mt-1 font-mono">${totalAmountSum.toFixed(2)}</div>
+              <span className="text-[10px] text-emerald-400 font-semibold">{approvedCount} Completed</span>
             </div>
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
-              <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">Pending</span>
-              <div className="text-xl font-black text-amber-600 font-mono mt-1">{pendingCount}</div>
-              <span className="text-[10px] text-slate-400">Awaiting processing</span>
+            <div className="bg-[#101117] rounded-2xl p-4 border border-white/10">
+              <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">Pending</span>
+              <div className="text-xl font-black text-amber-400 font-mono mt-1">{pendingCount}</div>
+              <span className="text-[10px] text-slate-500">Awaiting processing</span>
             </div>
           </div>
 
           {/* Filter Bar */}
-          <form onSubmit={handleSearch} className="bg-white rounded-2xl p-5 shadow-2xs border border-slate-200/90 space-y-4">
-            <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-slate-100">
+          <form onSubmit={handleSearch} className="bg-[#101117] rounded-2xl p-5 border border-white/10 space-y-4">
+            <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-white/10">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Quick Range:</span>
               {[
                 { id: 'all', label: 'All Time' },
@@ -244,10 +244,10 @@ export default function GameWithdrawalRecordsPage() {
                   key={p.id}
                   type="button"
                   onClick={() => handleQuickPreset(p.id)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-2xs ${
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-xs ${
                     activePreset === p.id
-                      ? 'bg-[#1a304e] text-white'
-                      : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      ? 'bg-[#FFCC00] text-slate-950 font-black shadow-lg shadow-yellow-500/20'
+                      : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/20 hover:text-white'
                   }`}
                 >
                   {p.label}
@@ -258,7 +258,7 @@ export default function GameWithdrawalRecordsPage() {
                 <button
                   type="button"
                   onClick={() => handleQuickPreset('all')}
-                  className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 ml-auto"
+                  className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 ml-auto"
                 >
                   <X className="w-3.5 h-3.5" /> Clear Dates
                 </button>
@@ -267,10 +267,10 @@ export default function GameWithdrawalRecordsPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[150px]">
-                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Date From</label>
+                <label className="text-[10px] text-slate-400 font-semibold block mb-0.5">Date From</label>
                 <div
                   onClick={() => dateFromInputRef.current?.showPicker && dateFromInputRef.current.showPicker()}
-                  className="relative flex items-center border border-slate-300 rounded-lg px-3 py-2 bg-white hover:border-slate-400 transition cursor-pointer"
+                  className="relative flex items-center border border-white/10 rounded-lg px-3 py-2 bg-[#181922] hover:border-white/20 transition cursor-pointer"
                 >
                   <input
                     ref={dateFromInputRef}
@@ -280,17 +280,17 @@ export default function GameWithdrawalRecordsPage() {
                       setDateFrom(e.target.value);
                       setActivePreset('custom');
                     }}
-                    className="w-full text-xs text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                    className="w-full text-xs text-slate-200 bg-transparent focus:outline-none cursor-pointer"
                   />
                   <Calendar className="w-4 h-4 text-slate-400 shrink-0 ml-1 pointer-events-none" />
                 </div>
               </div>
 
               <div className="relative flex-1 min-w-[150px]">
-                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Date To</label>
+                <label className="text-[10px] text-slate-400 font-semibold block mb-0.5">Date To</label>
                 <div
                   onClick={() => dateToInputRef.current?.showPicker && dateToInputRef.current.showPicker()}
-                  className="relative flex items-center border border-slate-300 rounded-lg px-3 py-2 bg-white hover:border-slate-400 transition cursor-pointer"
+                  className="relative flex items-center border border-white/10 rounded-lg px-3 py-2 bg-[#181922] hover:border-white/20 transition cursor-pointer"
                 >
                   <input
                     ref={dateToInputRef}
@@ -300,18 +300,18 @@ export default function GameWithdrawalRecordsPage() {
                       setDateTo(e.target.value);
                       setActivePreset('custom');
                     }}
-                    className="w-full text-xs text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                    className="w-full text-xs text-slate-200 bg-transparent focus:outline-none cursor-pointer"
                   />
                   <Calendar className="w-4 h-4 text-slate-400 shrink-0 ml-1 pointer-events-none" />
                 </div>
               </div>
 
               <div className="relative flex-1 min-w-[140px]">
-                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Platform</label>
+                <label className="text-[10px] text-slate-400 font-semibold block mb-0.5">Platform</label>
                 <select
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value)}
-                  className="w-full text-xs text-slate-800 border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none cursor-pointer"
+                  className="w-full text-xs text-slate-200 border border-white/10 rounded-lg px-3 py-2 bg-[#181922] focus:outline-none cursor-pointer"
                 >
                   <option value="All">All Platforms</option>
                   <option value="Fire Kirin">Fire Kirin</option>
@@ -324,11 +324,11 @@ export default function GameWithdrawalRecordsPage() {
               </div>
 
               <div className="relative flex-1 min-w-[140px]">
-                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Status</label>
+                <label className="text-[10px] text-slate-400 font-semibold block mb-0.5">Status</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full text-xs text-slate-800 border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none cursor-pointer"
+                  className="w-full text-xs text-slate-200 border border-white/10 rounded-lg px-3 py-2 bg-[#181922] focus:outline-none cursor-pointer"
                 >
                   <option value="All">All Statuses</option>
                   <option value="Pending">Pending</option>
@@ -338,13 +338,13 @@ export default function GameWithdrawalRecordsPage() {
               </div>
 
               <div className="relative flex-1 min-w-[160px]">
-                <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Order No</label>
+                <label className="text-[10px] text-slate-400 font-semibold block mb-0.5">Order No</label>
                 <input
                   type="text"
                   placeholder="Order No..."
                   value={orderNo}
                   onChange={(e) => setOrderNo(e.target.value)}
-                  className="w-full text-xs text-slate-800 border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none placeholder-slate-400"
+                  className="w-full text-xs text-slate-200 border border-white/10 rounded-lg px-3 py-2 bg-[#181922] focus:outline-none placeholder-slate-500"
                 />
               </div>
 
@@ -352,7 +352,7 @@ export default function GameWithdrawalRecordsPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-[#1a304e] hover:bg-[#132238] text-white text-xs font-bold px-6 py-2.5 rounded-lg transition shadow-2xs flex items-center gap-1.5 disabled:opacity-60"
+                  className="bg-[#FFCC00] hover:bg-[#e6b800] text-slate-950 text-xs font-black px-6 py-2.5 rounded-lg transition shadow-lg shadow-yellow-500/20 flex items-center gap-1.5 disabled:opacity-60"
                 >
                   <Search className="w-3.5 h-3.5" />
                   <span>Search</span>
@@ -360,7 +360,7 @@ export default function GameWithdrawalRecordsPage() {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold px-5 py-2.5 rounded-lg transition shadow-2xs"
+                  className="bg-[#181922] border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-semibold px-5 py-2.5 rounded-lg transition"
                 >
                   Reset
                 </button>
@@ -369,10 +369,10 @@ export default function GameWithdrawalRecordsPage() {
           </form>
 
           {/* Table Container */}
-          <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/90 overflow-hidden">
+          <div className="bg-[#101117] rounded-2xl border border-white/10 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-[#0f172a] text-slate-200 text-[11px] font-bold uppercase tracking-wider border-b border-slate-800 whitespace-nowrap">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-[#181922] text-slate-300 text-[11px] font-bold uppercase tracking-wider border-b border-white/10 whitespace-nowrap">
                   <tr>
                     <th className="py-4 px-4">USERNAME</th>
                     <th className="py-4 px-4">ORDER NO</th>
@@ -387,19 +387,19 @@ export default function GameWithdrawalRecordsPage() {
                     <th className="py-4 px-4">OPERATION TIME</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-white/5">
                   {paginatedRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-16 text-center text-slate-400">
+                      <td colSpan={11} className="py-16 text-center text-slate-500">
                         <div className="flex flex-col items-center justify-center gap-2">
-                          <AlertCircle className="w-7 h-7 text-slate-300" />
-                          <span className="font-semibold text-slate-500">
+                          <AlertCircle className="w-7 h-7 text-slate-600" />
+                          <span className="font-semibold text-slate-400">
                             {isLoading ? 'Loading records...' : 'No game withdrawal records found.'}
                           </span>
                           {!isLoading && (
                             <button
                               onClick={handleReset}
-                              className="text-xs text-blue-600 hover:underline font-bold mt-1"
+                              className="text-xs text-[#FFCC00] hover:underline font-bold mt-1"
                             >
                               Reset filters to view all records
                             </button>
@@ -414,31 +414,31 @@ export default function GameWithdrawalRecordsPage() {
                       const isRejected = r.status === 'Rejected';
 
                       return (
-                        <tr key={r.id} className="hover:bg-slate-50/70 transition">
-                          <td className="py-4 px-4 font-bold text-slate-900">{r.username}</td>
-                          <td className="py-4 px-4 font-mono font-medium text-slate-700 whitespace-nowrap">
+                        <tr key={r.id} className="hover:bg-white/[0.03] transition">
+                          <td className="py-4 px-4 font-bold text-white">{r.username}</td>
+                          <td className="py-4 px-4 font-mono font-medium text-slate-300 whitespace-nowrap">
                             <span className="flex items-center gap-1.5">
                               <span>{r.order_no}</span>
                               <button
                                 type="button"
                                 onClick={() => copyToClipboard(r.order_no, r.id)}
                                 title="Copy Order Number"
-                                className="text-slate-400 hover:text-slate-600 transition p-0.5"
+                                className="text-slate-500 hover:text-slate-300 transition p-0.5"
                               >
                                 {copiedId === r.id ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
                                 ) : (
                                   <Copy className="w-3.5 h-3.5" />
                                 )}
                               </button>
                             </span>
                           </td>
-                          <td className="py-4 px-4 font-semibold text-slate-800 whitespace-nowrap">{r.platform_name}</td>
-                          <td className="py-4 px-4 font-mono text-slate-700 whitespace-nowrap">{r.game_account}</td>
-                          <td className="py-4 px-4 font-black text-slate-900">${Number(r.amount || 0).toFixed(2)}</td>
+                          <td className="py-4 px-4 font-semibold text-white whitespace-nowrap">{r.platform_name}</td>
+                          <td className="py-4 px-4 font-mono text-[#FFCC00] font-bold whitespace-nowrap">{r.game_account}</td>
+                          <td className="py-4 px-4 font-black text-white font-mono">${Number(r.amount || 0).toFixed(2)}</td>
                           <td className="py-4 px-4 whitespace-nowrap">
                             <span
-                              className={`px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 text-white shadow-2xs ${
+                              className={`px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 text-white shadow-xs ${
                                 isApproved
                                   ? 'bg-emerald-600'
                                   : isRejected
@@ -453,17 +453,17 @@ export default function GameWithdrawalRecordsPage() {
                               <span>{r.status}</span>
                             </span>
                           </td>
-                          <td className="py-4 px-4 text-rose-600 text-xs font-semibold whitespace-nowrap">
+                          <td className="py-4 px-4 text-rose-400 text-xs font-semibold whitespace-nowrap">
                             {r.failure_reason || '-'}
                           </td>
-                          <td className="py-4 px-4 text-slate-600 font-mono">
+                          <td className="py-4 px-4 text-slate-400 font-mono">
                             ${Number(r.wallet_balance_before || 0).toFixed(2)}
                           </td>
-                          <td className="py-4 px-4 text-slate-600 font-mono">
+                          <td className="py-4 px-4 text-slate-400 font-mono">
                             ${Number(r.wallet_balance_after || 0).toFixed(2)}
                           </td>
-                          <td className="py-4 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">{r.created_at}</td>
-                          <td className="py-4 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">{r.operation_time}</td>
+                          <td className="py-4 px-4 text-slate-400 font-mono text-[11px] whitespace-nowrap">{r.created_at}</td>
+                          <td className="py-4 px-4 text-slate-400 font-mono text-[11px] whitespace-nowrap">{r.operation_time}</td>
                         </tr>
                       );
                     })
@@ -472,8 +472,8 @@ export default function GameWithdrawalRecordsPage() {
               </table>
             </div>
 
-            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <span className="text-slate-500 text-[11px]">
+            <div className="p-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <span className="text-slate-400 text-[11px]">
                 Showing {records.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{' '}
                 {Math.min(currentPage * pageSize, records.length)} of {records.length} records
               </span>
@@ -483,7 +483,7 @@ export default function GameWithdrawalRecordsPage() {
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage <= 1}
-                  className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center text-[11px] disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  className="w-7 h-7 rounded border border-white/10 bg-[#181922] hover:bg-white/5 text-slate-300 flex items-center justify-center text-[11px] disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
@@ -495,8 +495,8 @@ export default function GameWithdrawalRecordsPage() {
                     onClick={() => setCurrentPage(num)}
                     className={`w-7 h-7 rounded text-[11px] font-bold flex items-center justify-center transition ${
                       currentPage === num
-                        ? 'bg-[#1a304e] text-white shadow-2xs'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#FFCC00] text-slate-950 font-black shadow-xs'
+                        : 'bg-[#181922] border border-white/10 text-slate-300 hover:bg-white/5'
                     }`}
                   >
                     {num}
@@ -507,7 +507,7 @@ export default function GameWithdrawalRecordsPage() {
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage >= totalPages}
-                  className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center text-[11px] disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  className="w-7 h-7 rounded border border-white/10 bg-[#181922] hover:bg-white/5 text-slate-300 flex items-center justify-center text-[11px] disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>

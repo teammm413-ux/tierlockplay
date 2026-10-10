@@ -6,7 +6,7 @@ import PlayerHeader from '@/components/PlayerHeader';
 import Sidebar from '@/components/Sidebar';
 import WhatsAppChat from '@/components/WhatsAppChat';
 import FreeplayModal from '@/components/FreeplayModal';
-import { ChevronDown, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ChevronDown, AlertCircle, CheckCircle2, ArrowRight, Wallet, ArrowUpRight, Loader2 } from 'lucide-react';
 
 export default function WithdrawalPage() {
   const [user, setUser] = useState(null);
@@ -102,7 +102,7 @@ export default function WithdrawalPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          paymentMethod: channel === 'Cash APP' ? 'Cash App' : 'PayPal',
+          paymentMethod: channel,
           paymentInfo: paymentInfo.trim(),
           amount: parsedAmount,
         }),
@@ -112,11 +112,11 @@ export default function WithdrawalPage() {
       if (data.success) {
         setSuccessData({
           orderNo: data.orderNo,
-          channel,
-          paymentInfo: paymentInfo.trim(),
           amount: parsedAmount,
-          handlingFee,
-          receivingAmount,
+          receivingAmount: receivingAmount,
+          handlingFee: handlingFee,
+          channel: channel,
+          paymentInfo: paymentInfo.trim(),
         });
         refreshUserData();
       } else {
@@ -130,30 +130,31 @@ export default function WithdrawalPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f4f9] text-slate-800 flex">
+    <div className="min-h-screen bg-[#07080b] text-slate-100 flex">
       {/* Left Sidebar */}
       <Sidebar user={user} />
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
-        {/* Top Header matching TRP screenshots */}
+        {/* Top Header */}
         <PlayerHeader
           user={user}
           onOpenChat={() => setIsChatOpen(true)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full space-y-6">
           {/* Centered Title */}
           <div className="text-center mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-wide text-slate-900 uppercase">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-white uppercase">
               TRANSFER TO
             </h1>
+            <div className="w-12 h-0.5 bg-[#FFCC00] mx-auto mt-2 rounded-full shadow-[0_0_8px_#FFCC00]"></div>
           </div>
 
           {/* Select Channel */}
           <div className="mb-6">
-            <label className="block text-xs font-bold text-slate-700 mb-2">
-              Select Channel
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5">
+              Select Payout Channel
             </label>
             <div className="flex items-center gap-3">
               <button
@@ -164,10 +165,10 @@ export default function WithdrawalPage() {
                     setPaymentInfo('$' + paymentInfo);
                   }
                 }}
-                className={`px-6 py-2.5 rounded-full text-xs font-bold transition shadow-sm ${
+                className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition ${
                   channel === 'Cash APP'
-                    ? 'bg-[#1a304e] text-white'
-                    : 'bg-white text-slate-700 border border-slate-300 hover:border-slate-400'
+                    ? 'bg-[#FFCC00] text-slate-950 shadow-lg shadow-yellow-500/20'
+                    : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
                 }`}
               >
                 Cash APP
@@ -176,10 +177,10 @@ export default function WithdrawalPage() {
               <button
                 type="button"
                 onClick={() => setChannel('Paypal')}
-                className={`px-6 py-2.5 rounded-full text-xs font-bold transition shadow-sm ${
+                className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition ${
                   channel === 'Paypal'
-                    ? 'bg-[#1a304e] text-white'
-                    : 'bg-white text-slate-700 border border-slate-300 hover:border-slate-400'
+                    ? 'bg-[#FFCC00] text-slate-950 shadow-lg shadow-yellow-500/20'
+                    : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
                 }`}
               >
                 Paypal
@@ -188,21 +189,21 @@ export default function WithdrawalPage() {
           </div>
 
           {errorMsg && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+            <div className="mb-6 p-4 bg-red-950/40 border border-red-500/40 rounded-2xl text-xs text-red-400 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
               <span>{errorMsg}</span>
             </div>
           )}
 
-          {/* 2 Column Layout (Screenshot 6) */}
+          {/* 2 Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Card: Input details */}
-            <div className="lg:col-span-7 bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-slate-200/90 space-y-5">
+            <div className="lg:col-span-7 bg-[#101117] rounded-3xl p-6 sm:p-7 shadow-[0_0_30px_rgba(255,204,0,0.04)] border border-white/10 space-y-5">
               {/* Withdrawable Amount */}
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                <span>Withdrawable Amount:</span>
-                <span className="text-emerald-600 font-mono text-base font-bold">
-                  ${Number(user?.wallet_balance || 0).toFixed(2)}
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <span className="text-xs font-semibold text-slate-300">Withdrawable Balance:</span>
+                <span className="text-[#FFCC00] font-mono text-lg font-black drop-shadow-[0_0_10px_rgba(255,204,0,0.3)]">
+                  ${Number(user?.wallet_balance || 0).toFixed(2)} USD
                 </span>
               </div>
 
@@ -210,11 +211,11 @@ export default function WithdrawalPage() {
               <div className="relative">
                 <select
                   onChange={handleSavedMethodSelect}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-xs text-slate-700 appearance-none focus:outline-none focus:border-slate-500 pr-10 cursor-pointer"
+                  className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none focus:outline-none focus:border-[#FFCC00] pr-10 cursor-pointer"
                 >
-                  <option value="">Select a saved method</option>
+                  <option value="" className="bg-[#181922]">Select a saved method</option>
                   {savedMethods.map((m) => (
-                    <option key={m.id} value={m.id}>
+                    <option key={m.id} value={m.id} className="bg-[#181922]">
                       {m.type} - {m.account_identifier} {m.is_default ? '(Default)' : ''}
                     </option>
                   ))}
@@ -231,7 +232,7 @@ export default function WithdrawalPage() {
                   value={paymentInfo}
                   onChange={(e) => setPaymentInfo(e.target.value)}
                   placeholder={channel === 'Cash APP' ? '$Cashtag' : 'Paypal Email / Phone'}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-500"
+                  className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#FFCC00]"
                 />
                 <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
                   {channel === 'Cash APP'
@@ -240,20 +241,20 @@ export default function WithdrawalPage() {
                 </p>
               </div>
 
-              {/* Withdrawal Amount Input with border label */}
+              {/* Withdrawal Amount Input */}
               <div className="relative pt-1">
-                <label className="text-[11px] font-semibold text-slate-500 block mb-1">
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
                   Withdrawal Amount
                 </label>
-                <div className="relative flex items-center border border-slate-300 rounded-lg px-3.5 py-2 focus-within:border-slate-500 bg-white">
-                  <span className="text-slate-800 font-semibold text-sm mr-2">$</span>
+                <div className="relative flex items-center border border-white/10 rounded-xl px-4 py-3 focus-within:border-[#FFCC00] bg-[#181922]">
+                  <span className="text-[#FFCC00] font-black text-sm mr-2">$</span>
                   <input
                     type="number"
                     min="20"
                     step="1"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full bg-transparent text-slate-900 text-sm font-semibold focus:outline-none"
+                    className="w-full bg-transparent text-white text-sm font-bold focus:outline-none font-mono"
                     placeholder="Enter amount"
                   />
                 </div>
@@ -261,10 +262,10 @@ export default function WithdrawalPage() {
 
               {/* Choose amount or enter self */}
               <div className="pt-2">
-                <span className="text-xs font-bold text-slate-800 block mb-3">
-                  Choose amount or enter self
+                <span className="text-xs font-bold text-slate-300 block mb-3 uppercase tracking-wider">
+                  Quick Amount Presets
                 </span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {presets.map((val) => {
                     const isSelected = parsedAmount === parseFloat(val);
                     return (
@@ -272,10 +273,10 @@ export default function WithdrawalPage() {
                         key={val}
                         type="button"
                         onClick={() => handlePresetClick(val)}
-                        className={`py-2 px-4 rounded-full text-xs font-bold transition shadow-xs text-center ${
+                        className={`py-2.5 px-4 rounded-xl text-xs font-mono font-bold transition text-center ${
                           isSelected
-                            ? 'bg-[#2e7d32] text-white border border-[#2e7d32]'
-                            : 'bg-white text-slate-800 border border-slate-300 hover:border-slate-400'
+                            ? 'bg-[#FFCC00] text-slate-950 font-black shadow-md'
+                            : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
                         }`}
                       >
                         ${val}
@@ -287,37 +288,37 @@ export default function WithdrawalPage() {
             </div>
 
             {/* Right Card: Order Details */}
-            <div className="lg:col-span-5 bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-slate-200/90 space-y-4">
-              <h2 className="text-base font-bold text-slate-900">Order Details</h2>
+            <div className="lg:col-span-5 bg-[#101117] rounded-3xl p-6 sm:p-7 shadow-[0_0_30px_rgba(255,204,0,0.04)] border border-white/10 space-y-4">
+              <h2 className="text-base font-black text-white uppercase tracking-wide">Order Details</h2>
 
-              <div className="space-y-3 pt-2 text-xs">
-                <div className="flex justify-between items-center text-slate-600">
+              <div className="space-y-3.5 pt-2 text-xs divide-y divide-white/10">
+                <div className="flex justify-between items-center text-slate-300 pt-1">
                   <span>Withdrawal Amount</span>
-                  <span className="font-mono text-slate-900 font-semibold">
+                  <span className="font-mono text-white font-bold text-sm">
                     ${parsedAmount.toFixed(2)}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-start text-slate-600">
+                <div className="flex justify-between items-start text-slate-300 pt-3">
                   <div>
                     <span>Handling Fee</span>
-                    <span className="block text-[10px] text-slate-400">(5.00% rate)</span>
+                    <span className="block text-[10px] text-slate-500">(5.00% rate)</span>
                   </div>
-                  <span className="font-mono text-slate-900 font-semibold">
+                  <span className="font-mono text-slate-400 font-semibold">
                     -${handlingFee.toFixed(2)}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center pt-2">
-                  <span className="text-slate-600 font-semibold">Receiving Amount</span>
-                  <span className="font-mono text-emerald-600 font-bold text-base">
+                <div className="flex justify-between items-center pt-3">
+                  <span className="text-slate-300 font-bold">Receiving Amount</span>
+                  <span className="font-mono text-[#FFCC00] font-black text-lg drop-shadow-[0_0_8px_rgba(255,204,0,0.3)]">
                     ${receivingAmount.toFixed(2)}
                   </span>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-slate-600">
+                <div className="pt-3 flex justify-between items-center text-slate-300">
                   <span>TRANSFER TO</span>
-                  <span className="font-bold text-slate-900">{channel}</span>
+                  <span className="font-bold text-white uppercase">{channel}</span>
                 </div>
               </div>
 
@@ -326,9 +327,16 @@ export default function WithdrawalPage() {
                   type="button"
                   onClick={handleWithdrawalSubmit}
                   disabled={isSubmitting || parsedAmount <= 0}
-                  className="w-full bg-[#1a304e] hover:bg-[#132238] active:scale-[0.99] text-white font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-sm disabled:opacity-50"
+                  className="w-full bg-[#FFCC00] hover:bg-yellow-300 active:scale-[0.99] text-slate-950 font-black py-4 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-[0_4px_20px_rgba(255,204,0,0.3)] disabled:opacity-50"
                 >
-                  {isSubmitting ? 'PROCESSING...' : 'CONFIRM WITHDRAWAL'}
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                      <span>Processing Cashout...</span>
+                    </span>
+                  ) : (
+                    <span>CONFIRM WITHDRAWAL</span>
+                  )}
                 </button>
               </div>
             </div>
@@ -338,43 +346,43 @@ export default function WithdrawalPage() {
 
       {/* Success / Confirmation Modal */}
       {successData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 sm:p-7 shadow-2xl border border-slate-200 text-center">
-            <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#101117] rounded-3xl p-6 sm:p-7 shadow-2xl border border-[#FFCC00]/30 text-center">
+            <div className="w-14 h-14 rounded-full bg-[#FFCC00]/15 text-[#FFCC00] mx-auto flex items-center justify-center mb-4">
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
-            <h3 className="text-lg font-bold text-slate-900 uppercase tracking-wide">
+            <h3 className="text-lg font-black text-white uppercase tracking-wide">
               Withdrawal Submitted!
             </h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               Your cashout order has been placed into the priority dispatch queue.
             </p>
 
-            <div className="my-5 bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-2.5 text-xs">
+            <div className="my-5 bg-[#181922] border border-white/10 rounded-2xl p-4 text-left space-y-2.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-500">Order No:</span>
-                <span className="font-mono text-slate-900 font-bold">{successData.orderNo}</span>
+                <span className="text-slate-400">Order No:</span>
+                <span className="font-mono text-white font-bold">{successData.orderNo}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Transfer To:</span>
-                <span className="text-slate-900 font-bold">{successData.channel}</span>
+                <span className="text-slate-400">Transfer To:</span>
+                <span className="text-white font-bold">{successData.channel}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Recipient Account:</span>
-                <span className="text-slate-900 font-mono font-medium">{successData.paymentInfo}</span>
+                <span className="text-slate-400">Recipient Account:</span>
+                <span className="text-white font-mono font-medium">{successData.paymentInfo}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Amount:</span>
-                <span className="text-slate-900 font-mono font-semibold">${successData.amount.toFixed(2)}</span>
+                <span className="text-slate-400">Amount:</span>
+                <span className="text-white font-mono font-semibold">${successData.amount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Handling Fee (5.00%):</span>
-                <span className="text-slate-600 font-mono">-${successData.handlingFee.toFixed(2)}</span>
+                <span className="text-slate-400">Handling Fee (5.00%):</span>
+                <span className="text-slate-500 font-mono">-${successData.handlingFee.toFixed(2)}</span>
               </div>
-              <div className="pt-2 border-t border-slate-200 flex justify-between">
-                <span className="text-slate-900 font-bold">Receiving Amount:</span>
-                <span className="text-emerald-600 font-bold font-mono text-sm">
+              <div className="pt-2 border-t border-white/10 flex justify-between">
+                <span className="text-white font-bold">Receiving Amount:</span>
+                <span className="text-[#FFCC00] font-black font-mono text-base">
                   ${successData.receivingAmount.toFixed(2)}
                 </span>
               </div>
@@ -383,14 +391,14 @@ export default function WithdrawalPage() {
             <div className="flex items-center gap-3">
               <Link
                 href="/player/wallet/withdrawal-records"
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold uppercase transition"
+                className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold uppercase transition"
               >
                 View Records
               </Link>
               <button
                 type="button"
                 onClick={() => setSuccessData(null)}
-                className="flex-1 bg-[#1a304e] hover:bg-[#132238] py-3 rounded-xl text-xs font-bold uppercase text-white transition"
+                className="flex-1 bg-[#FFCC00] hover:bg-yellow-300 py-3 rounded-xl text-xs font-black uppercase text-slate-950 transition"
               >
                 Done
               </button>
