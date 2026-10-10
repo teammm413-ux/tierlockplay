@@ -46,15 +46,23 @@ export async function POST(request) {
 
     const mailRes = await sendVerificationEmail(email.trim().toLowerCase(), username, token);
 
+    if (!mailRes.success && !mailRes.simulated) {
+      return NextResponse.json({
+        success: false,
+        message: `SMTP Delivery Failed: ${mailRes.error}. Please check Hostinger SMTP settings in .env.local`,
+        error: mailRes.error,
+        token: process.env.NODE_ENV === 'development' ? token : undefined,
+      }, { status: 500 });
+    }
+
     return NextResponse.json({
       success: true,
-      token,
+      token: mailRes.simulated ? token : undefined,
       message: mailRes.simulated
-        ? `A verification token has been generated: ${token}`
-        : `Verification token successfully dispatched to ${email} via SMTP!`,
+        ? `[Dev Mode] Real SMTP credentials not set yet. Verification code: ${token}`
+        : `Verification code successfully sent to ${email} via Hostinger Business Email in real-time!`,
       email,
-      simulated: mailRes.simulated,
-      debugToken: token,
+      simulated: !!mailRes.simulated,
     });
   } catch (error) {
     console.error('send-email-token error:', error);

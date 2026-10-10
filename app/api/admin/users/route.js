@@ -42,6 +42,15 @@ export async function GET(request) {
       is_phone_verified: !!u.is_phone_verified,
       kyc_status: u.kyc_status || 'INCOMPLETE',
       kyc_name: u.kyc_name || '',
+      kyc_dob: u.kyc_dob || '',
+      kyc_id_type: u.kyc_id_type || 'Driver License',
+      kyc_id_number: u.kyc_id_number || '',
+      kyc_front_image: u.kyc_front_image || '',
+      kyc_back_image: u.kyc_back_image || '',
+      kyc_selfie_image: u.kyc_selfie_image || '',
+      kyc_rejection_reason: u.kyc_rejection_reason || '',
+      kyc_submitted_at: u.kyc_submitted_at || null,
+      kyc_verified_at: u.kyc_verified_at || null,
       invite_code: u.invite_code || 'VIP777',
       is_subscribed: !!u.is_subscribed,
       last_login_time: u.last_login_time || '',
@@ -121,9 +130,45 @@ export async function POST(request) {
       return NextResponse.json({ success: true, message: `Account status updated to ${status}` });
     }
 
+    if (action === 'approve_kyc') {
+      user.kyc_status = 'VERIFIED';
+      user.kyc_verified_at = new Date();
+      user.kyc_rejection_reason = '';
+      await user.save();
+      return NextResponse.json({
+        success: true,
+        message: `KYC for ${user.username} has been verified and approved successfully!`
+      });
+    }
+
+    if (action === 'reject_kyc') {
+      const { reason } = body;
+      user.kyc_status = 'REJECTED';
+      user.kyc_rejection_reason = reason || 'Identification document details could not be verified.';
+      await user.save();
+      return NextResponse.json({
+        success: true,
+        message: `KYC for ${user.username} rejected with feedback provided to user.`
+      });
+    }
+
+    if (action === 'reset_kyc') {
+      user.kyc_status = 'INCOMPLETE';
+      user.kyc_rejection_reason = '';
+      await user.save();
+      return NextResponse.json({
+        success: true,
+        message: `KYC status reset to INCOMPLETE for ${user.username}.`
+      });
+    }
+
     if (action === 'update_kyc') {
       const { kyc_status } = body;
       user.kyc_status = kyc_status;
+      if (kyc_status === 'VERIFIED') {
+        user.kyc_verified_at = new Date();
+        user.kyc_rejection_reason = '';
+      }
       await user.save();
       return NextResponse.json({ success: true, message: `KYC status updated to ${kyc_status}` });
     }

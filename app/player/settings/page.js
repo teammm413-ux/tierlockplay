@@ -22,7 +22,14 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle2,
-  Plus
+  Plus,
+  Upload,
+  FileText,
+  Camera,
+  ShieldCheck,
+  Clock,
+  RefreshCw,
+  Mail
 } from 'lucide-react';
 
 export default function AccountSettingsPage() {
@@ -43,16 +50,35 @@ export default function AccountSettingsPage() {
   const [passwordNotice, setPasswordNotice] = useState({ text: '', isError: false });
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  // Email Verification Modal state (Screenshot 20)
+  // Real-time Email OTP Verification Modal state
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [emailToken, setEmailToken] = useState('900866');
+  const [emailToken, setEmailToken] = useState('');
   const [tokenInput, setTokenInput] = useState('');
   const [copied, setCopied] = useState(false);
   const [isSendingToken, setIsSendingToken] = useState(false);
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
   const [emailNotice, setEmailNotice] = useState({ text: '', isError: false });
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [isSimulatedOtp, setIsSimulatedOtp] = useState(false);
 
-  // Payout Method Modal state (Screenshot 19)
+  // KYC Verification Modal state
+  const [isKycModalOpen, setIsKycModalOpen] = useState(false);
+  const [kycForm, setKycForm] = useState({
+    legalName: '',
+    dob: '',
+    idType: 'Driver License',
+    idNumber: '',
+  });
+  const [frontFile, setFrontFile] = useState(null);
+  const [frontPreview, setFrontPreview] = useState(null);
+  const [backFile, setBackFile] = useState(null);
+  const [backPreview, setBackPreview] = useState(null);
+  const [selfieFile, setSelfieFile] = useState(null);
+  const [selfiePreview, setSelfiePreview] = useState(null);
+  const [isSubmittingKyc, setIsSubmittingKyc] = useState(false);
+  const [kycNotice, setKycNotice] = useState({ text: '', isError: false });
+
+  // Payout Method Modal state
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [selectedMethodType, setSelectedMethodType] = useState(null);
   const [accountIdentifier, setAccountIdentifier] = useState('');
@@ -96,25 +122,94 @@ export default function AccountSettingsPage() {
     loadPaymentMethods();
   }, []);
 
-  // Open Email Verification Modal & generate token (Screenshot 20)
-  const handleOpenEmailVerification = async () => {
-    setIsEmailModalOpen(true);
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Real-time Email Verification OTP dispatch
+  const handleSendEmailToken = async () => {
     setIsSendingToken(true);
     setEmailNotice({ text: '', isError: false });
     try {
       const res = await fetch('/api/auth/send-email-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user?.email }),
+        body: JSON.stringify({ email: user?.email, username: user?.username }),
       });
       const data = await res.json();
-      if (data.success && data.token) {
-        setEmailToken(data.token);
+      if (data.success) {
+        setEmailNotice({ text: data.message, isError: false });
+        if (data.simulated && data.token) {
+          setIsSimulatedOtp(true);
+          setEmailToken(data.token);
+        } else {
+          setIsSimulatedOtp(false);
+          setEmailToken('');
+        }
+        setResendCooldown(60);
+      } else {
+        setEmailNotice({ text: data.message || 'Failed to dispatch verification email', isError: true });
       }
     } catch (err) {
-      console.error(err);
+      setEmailNotice({ text: 'Error connecting to email service', isError: true });
     } finally {
       setIsSendingToken(false);
+    }
+  };
+
+  const handleOpenEmailVerification = () => {
+    setIsEmailModalOpen(true);
+    handleSendEmailToken();
+  };
+
+  // KYC submission handler
+  const handleKycSubmit = async (e) => {
+    e.preventDefault();
+    if (!kycForm.legalName.trim() || !kycForm.idNumber.trim()) {
+      setKycNotice({ text: 'Please fill in your legal full name and ID document number', isError: true });
+      return;
+    }
+    if (!frontFile && !user?.kyc_front_image) {
+      setKycNotice({ text: 'Front photo of your identification document is required', isError: true });
+      return;
+    }
+
+    setIsSubmittingKyc(true);
+    setKycNotice({ text: '', isError: false });
+
+    try {
+      const formData = new FormData();
+      formData.append('legal_name', kycForm.legalName);
+      formData.append('dob', kycForm.dob);
+      formData.append('id_type', kycForm.idType);
+      formData.append('id_number', kycForm.idNumber);
+      if (frontFile) formData.append('front_image', frontFile);
+      if (backFile) formData.append('back_image', backFile);
+      if (selfieFile) formData.append('selfie_image', selfieFile);
+
+      const res = await fetch('/api/kyc/submit', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setKycNotice({ text: data.message, isError: false });
+        await refreshUserData();
+        setTimeout(() => {
+          setIsKycModalOpen(false);
+          setKycNotice({ text: '', isError: false });
+        }, 1500);
+      } else {
+        setKycNotice({ text: data.message || 'Failed to submit KYC documents', isError: true });
+      }
+    } catch (err) {
+      setKycNotice({ text: 'Error uploading documents to server', isError: true });
+    } finally {
+      setIsSubmittingKyc(false);
     }
   };
 
@@ -338,12 +433,63 @@ export default function AccountSettingsPage() {
                 </div>
 
                 {/* KYC Status */}
-                <div className="flex items-center pt-3">
-                  <span className="w-32 text-slate-400 font-medium">KYC Status:</span>
-                  <span className="bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold px-3 py-1 rounded-lg">
-                    {user?.kyc_status || 'INCOMPLETE'}
-                  </span>
+                <div className="flex items-center justify-between pt-3">
+                  <div className="flex items-center">
+                    <span className="w-32 text-slate-400 font-medium">KYC Status:</span>
+                    {user?.kyc_status === 'VERIFIED' ? (
+                      <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1 rounded-lg flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> VERIFIED
+                      </span>
+                    ) : user?.kyc_status === 'PENDING' ? (
+                      <span className="bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold px-3 py-1 rounded-lg flex items-center gap-1.5 animate-pulse">
+                        <Clock className="w-3.5 h-3.5" /> UNDER REVIEW
+                      </span>
+                    ) : user?.kyc_status === 'REJECTED' ? (
+                      <span className="bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold px-3 py-1 rounded-lg flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5" /> REJECTED
+                      </span>
+                    ) : (
+                      <span className="bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold px-3 py-1 rounded-lg">
+                        INCOMPLETE
+                      </span>
+                    )}
+                  </div>
+                  {user?.kyc_status !== 'VERIFIED' && user?.kyc_status !== 'PENDING' && (
+                    <button
+                      onClick={() => {
+                        setKycForm({
+                          legalName: user?.kyc_name || '',
+                          dob: user?.kyc_dob || '',
+                          idType: user?.kyc_id_type || 'Driver License',
+                          idNumber: user?.kyc_id_number || '',
+                        });
+                        setIsKycModalOpen(true);
+                      }}
+                      className="text-xs font-bold text-[#FFCC00] hover:underline transition flex items-center gap-1"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>{user?.kyc_status === 'REJECTED' ? 'Resubmit KYC' : 'Verify Identity'}</span>
+                    </button>
+                  )}
                 </div>
+
+                {user?.kyc_status === 'REJECTED' && user?.kyc_rejection_reason && (
+                  <div className="pt-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="font-bold">Rejection Reason:</span> {user.kyc_rejection_reason}
+                    </div>
+                  </div>
+                )}
+
+                {user?.kyc_status === 'PENDING' && (
+                  <div className="pt-2 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+                    <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div>
+                      Documents submitted on {user?.kyc_submitted_at ? new Date(user.kyc_submitted_at).toLocaleDateString() : 'today'}. Our compliance team is verifying your identity (typically takes 5-15 minutes).
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -695,65 +841,113 @@ export default function AccountSettingsPage() {
         </div>
       )}
 
-      {/* MODAL 2: Email Verification */}
+      {/* MODAL 2: Real-time Email Verification (Hostinger Business Email) */}
       {isEmailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-[#101117] border border-white/10 rounded-3xl max-w-lg w-full p-8 shadow-2xl space-y-6">
-            <h2 className="text-lg font-black text-white uppercase tracking-tight">Email Verification</h2>
-
-            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-              A verification token has been generated. Copy the token and paste it below to complete email verification.
-            </p>
-
-            {/* Token Display Box with Copy Button */}
-            <div className="bg-[#181922] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
-              <span className="font-mono text-lg sm:text-xl font-bold tracking-wider text-[#FFCC00]">
-                {emailToken}
-              </span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-[#101117] border border-white/10 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">Real-Time Email OTP Verification</h2>
+                  <p className="text-[11px] text-slate-400">Secured via Hostinger Business Email SMTP</p>
+                </div>
+              </div>
               <button
-                type="button"
-                onClick={handleCopyToken}
-                className="text-slate-400 hover:text-white p-2 rounded-lg transition"
-                title="Copy token"
+                onClick={() => {
+                  setIsEmailModalOpen(false);
+                  setTokenInput('');
+                  setEmailNotice({ text: '', isError: false });
+                }}
+                className="text-slate-400 hover:text-white p-1"
               >
-                {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-[11px] text-slate-500">
-              Valid for 30 minutes (expires in 30 minutes)
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              We have dispatched a 6-digit verification code to <strong className="text-[#FFCC00] font-mono">{user?.email}</strong>. Please check your inbox or spam folder and enter the code below:
             </p>
+
+            {/* If in dev mode simulated fallback, display token info banner */}
+            {isSimulatedOtp && emailToken && (
+              <div className="bg-[#181922] border border-[#FFCC00]/40 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] font-bold text-[#FFCC00] uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#FFCC00] animate-ping" />
+                    <span>Dev Mode Generated Code:</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyToken}
+                    className="text-slate-400 hover:text-white p-1 rounded-lg transition"
+                    title="Copy token"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+                <div className="font-mono text-2xl font-black tracking-widest text-[#FFCC00]">
+                  {emailToken}
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  (When you add your Hostinger business email credentials in .env.local, code will dispatch live to inbox!)
+                </p>
+              </div>
+            )}
 
             {emailNotice.text && (
               <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
                 emailNotice.isError ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
               }`}>
-                {emailNotice.isError ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                {emailNotice.isError ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
                 <span>{emailNotice.text}</span>
               </div>
             )}
 
-            {/* Outlined Input with Notch Label & Key Icon */}
-            <form onSubmit={handleVerifyEmail} className="space-y-6">
-              <div className="relative border border-white/10 rounded-xl px-4 pt-2.5 pb-2 bg-[#181922] focus-within:border-[#FFCC00] transition">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Verification Token
+            {/* 6-Digit Code Input Form */}
+            <form onSubmit={handleVerifyEmail} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Enter 6-Digit Verification Code
                 </label>
-                <div className="flex items-center gap-2.5">
-                  <Key className="w-4 h-4 text-slate-500" />
+                <div className="relative border border-white/10 rounded-2xl p-3 bg-[#181922] focus-within:border-[#FFCC00] transition">
                   <input
                     type="text"
                     required
-                    placeholder="Paste verification token"
+                    maxLength={6}
+                    placeholder="• • • • • •"
                     value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
-                    className="w-full text-sm text-white focus:outline-none placeholder-slate-500 bg-transparent font-mono"
+                    onChange={(e) => setTokenInput(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="w-full text-2xl text-center text-white focus:outline-none placeholder-slate-600 bg-transparent font-mono font-black tracking-[0.4em]"
                   />
                 </div>
               </div>
 
+              {/* Resend Cooldown Button */}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-slate-400">Didn&apos;t receive code?</span>
+                {resendCooldown > 0 ? (
+                  <span className="text-slate-500 font-mono font-bold flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    Resend in {resendCooldown}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSendEmailToken}
+                    disabled={isSendingToken}
+                    className="text-[#FFCC00] hover:underline font-bold transition flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSendingToken ? 'animate-spin' : ''}`} />
+                    <span>{isSendingToken ? 'Sending...' : 'Resend Code'}</span>
+                  </button>
+                )}
+              </div>
+
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => {
@@ -761,16 +955,23 @@ export default function AccountSettingsPage() {
                     setTokenInput('');
                     setEmailNotice({ text: '', isError: false });
                   }}
-                  className="text-sm font-semibold text-slate-400 hover:text-white px-4 py-2 transition"
+                  className="text-xs font-semibold text-slate-400 hover:text-white px-4 py-2.5 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={!tokenInput.trim() || isVerifyingToken}
-                  className="bg-[#FFCC00] hover:bg-[#e6b800] text-slate-950 font-black text-sm px-6 py-2.5 rounded-xl transition shadow-lg shadow-yellow-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={tokenInput.trim().length !== 6 || isVerifyingToken}
+                  className="bg-[#FFCC00] hover:bg-[#e6b800] text-slate-950 font-black text-xs px-6 py-2.5 rounded-xl transition shadow-lg shadow-yellow-500/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
-                  {isVerifyingToken ? 'Verifying...' : 'Verify'}
+                  {isVerifyingToken ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Verifying...</span>
+                    </>
+                  ) : (
+                    <span>Confirm &amp; Verify Email</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -815,6 +1016,254 @@ export default function AccountSettingsPage() {
                   className="bg-[#FFCC00] hover:bg-[#e6b800] text-slate-950 text-xs font-black px-5 py-2.5 rounded-xl transition shadow-lg shadow-yellow-500/20"
                 >
                   {isUpdatingEmail ? 'Saving...' : 'Update Email'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: KYC Identity Verification Modal */}
+      {isKycModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-[#101117] border border-white/10 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">Identity Verification (KYC)</h2>
+                  <p className="text-xs text-slate-400">Complete verification to unlock higher withdrawal limits & VIP perks</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsKycModalOpen(false);
+                  setKycNotice({ text: '', isError: false });
+                }}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {kycNotice.text && (
+              <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2 ${
+                kycNotice.isError ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+              }`}>
+                {kycNotice.isError ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                <span>{kycNotice.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleKycSubmit} className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Legal Name */}
+                <div>
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    Full Legal Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={kycForm.legalName}
+                    onChange={(e) => setKycForm(prev => ({ ...prev, legalName: e.target.value }))}
+                    placeholder="e.g. Alex Johnson"
+                    className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FFCC00]"
+                  />
+                </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    Date of Birth
+                  </label>
+                  <input
+                    type="date"
+                    value={kycForm.dob}
+                    onChange={(e) => setKycForm(prev => ({ ...prev, dob: e.target.value }))}
+                    className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FFCC00]"
+                  />
+                </div>
+
+                {/* ID Type */}
+                <div>
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    Document Type *
+                  </label>
+                  <select
+                    value={kycForm.idType}
+                    onChange={(e) => setKycForm(prev => ({ ...prev, idType: e.target.value }))}
+                    className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FFCC00]"
+                  >
+                    <option value="Driver License">Driver&apos;s License</option>
+                    <option value="Passport">Passport</option>
+                    <option value="National ID">National Identity Card / SSN</option>
+                    <option value="State ID">State ID Card</option>
+                  </select>
+                </div>
+
+                {/* ID Number */}
+                <div>
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    ID / Document Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={kycForm.idNumber}
+                    onChange={(e) => setKycForm(prev => ({ ...prev, idNumber: e.target.value }))}
+                    placeholder="e.g. DL-82914801"
+                    className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FFCC00]"
+                  />
+                </div>
+              </div>
+
+              {/* Document Uploads (Front, Back, Selfie) */}
+              <div className="space-y-3 pt-2">
+                <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider">
+                  Upload Identification Documents
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Front of ID */}
+                  <div className="border border-white/10 bg-[#181922] rounded-2xl p-3 flex flex-col items-center justify-center text-center space-y-2 relative group hover:border-[#FFCC00]/50 transition min-h-[140px]">
+                    {frontPreview || user?.kyc_front_image ? (
+                      <div className="relative w-full h-24 rounded-lg overflow-hidden border border-white/10">
+                        <img src={frontPreview || user?.kyc_front_image} alt="Front ID" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => { setFrontFile(null); setFrontPreview(null); }}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-rose-600 text-white p-1 rounded-full text-xs"
+                          title="Remove"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer p-2">
+                        <Upload className="w-6 h-6 text-[#FFCC00] mb-1.5" />
+                        <span className="text-[11px] font-bold text-white">ID Front Photo *</span>
+                        <span className="text-[10px] text-slate-500">JPG, PNG, WebP</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setFrontFile(file);
+                              setFrontPreview(URL.createObjectURL(file));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Document Front</span>
+                  </div>
+
+                  {/* Back of ID */}
+                  <div className="border border-white/10 bg-[#181922] rounded-2xl p-3 flex flex-col items-center justify-center text-center space-y-2 relative group hover:border-[#FFCC00]/50 transition min-h-[140px]">
+                    {backPreview || user?.kyc_back_image ? (
+                      <div className="relative w-full h-24 rounded-lg overflow-hidden border border-white/10">
+                        <img src={backPreview || user?.kyc_back_image} alt="Back ID" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => { setBackFile(null); setBackPreview(null); }}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-rose-600 text-white p-1 rounded-full text-xs"
+                          title="Remove"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer p-2">
+                        <FileText className="w-6 h-6 text-[#FFCC00] mb-1.5" />
+                        <span className="text-[11px] font-bold text-white">ID Back Photo</span>
+                        <span className="text-[10px] text-slate-500">Optional for Passport</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setBackFile(file);
+                              setBackPreview(URL.createObjectURL(file));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Document Back</span>
+                  </div>
+
+                  {/* Selfie holding ID */}
+                  <div className="border border-white/10 bg-[#181922] rounded-2xl p-3 flex flex-col items-center justify-center text-center space-y-2 relative group hover:border-[#FFCC00]/50 transition min-h-[140px]">
+                    {selfiePreview || user?.kyc_selfie_image ? (
+                      <div className="relative w-full h-24 rounded-lg overflow-hidden border border-white/10">
+                        <img src={selfiePreview || user?.kyc_selfie_image} alt="Selfie" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => { setSelfieFile(null); setSelfiePreview(null); }}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-rose-600 text-white p-1 rounded-full text-xs"
+                          title="Remove"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer p-2">
+                        <Camera className="w-6 h-6 text-[#FFCC00] mb-1.5" />
+                        <span className="text-[11px] font-bold text-white">Selfie with ID</span>
+                        <span className="text-[10px] text-slate-500">Fast-track approval</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setSelfieFile(file);
+                              setSelfiePreview(URL.createObjectURL(file));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Selfie Photo</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-[11px] text-slate-400 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#FFCC00] shrink-0" />
+                <span>Bank-grade 256-bit encryption. Your documents are strictly used for identity verification and fraud prevention.</span>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsKycModalOpen(false)}
+                  className="text-xs font-bold text-slate-400 hover:text-white px-4 py-2.5 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingKyc}
+                  className="bg-[#FFCC00] hover:bg-[#e6b800] text-slate-950 font-black text-xs px-6 py-2.5 rounded-xl transition shadow-lg shadow-yellow-500/20 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSubmittingKyc ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Uploading Documents...</span>
+                    </>
+                  ) : (
+                    <span>Submit KYC for Review</span>
+                  )}
                 </button>
               </div>
             </form>
