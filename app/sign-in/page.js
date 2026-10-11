@@ -10,8 +10,8 @@ import { getOrCreateDeviceId } from '@/lib/device';
 export default function SignInPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    usernameOrEmail: 'alex',
-    password: 'alex123',
+    usernameOrEmail: '',
+    password: '',
     verifyCode: '',
   });
   const [captchaCode, setCaptchaCode] = useState('4911');

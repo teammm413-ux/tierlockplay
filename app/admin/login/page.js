@@ -7,8 +7,8 @@ import { ShieldCheck, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -75,7 +75,7 @@ export default function AdminLoginPage() {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
+                  placeholder="Enter admin username or email"
                   className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition"
                 />
               </div>
@@ -109,12 +109,6 @@ export default function AdminLoginPage() {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          <div className="mt-6 p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-[11px] text-slate-600 text-center">
-            <span className="text-amber-700 font-bold">Default Credentials: </span>
-            <span className="font-mono text-slate-900 font-bold">admin / admin123</span>
-            <p className="text-[10px] text-slate-400 mt-1">Configurable via ADMIN_USERNAME &amp; ADMIN_PASSWORD in environment settings.</p>
-          </div>
         </div>
       </div>
     </div>
