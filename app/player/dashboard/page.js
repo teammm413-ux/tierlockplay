@@ -24,6 +24,7 @@ export default function PlayerDashboard() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFreeplayOpen, setIsFreeplayOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [referralUrl, setReferralUrl] = useState('');
 
   const refreshUserData = async () => {
     try {
@@ -56,13 +57,16 @@ export default function PlayerDashboard() {
   const accountStatus = user?.account_status || 'Active';
   const userInviteCode = user?.invite_code || 'VIP777';
 
-  const referralUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/sign-up?ref=${userInviteCode}`
-    : `https://app.tierlockplay.com/sign-up?ref=${userInviteCode}`;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setReferralUrl(`${window.location.origin}/sign-up?ref=${userInviteCode}`);
+    }
+  }, [userInviteCode]);
 
   const handleCopyLink = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(referralUrl);
+    const linkToCopy = referralUrl || (typeof window !== 'undefined' ? `${window.location.origin}/sign-up?ref=${userInviteCode}` : '');
+    if (typeof navigator !== 'undefined' && navigator.clipboard && linkToCopy) {
+      navigator.clipboard.writeText(linkToCopy);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
     }
@@ -189,8 +193,11 @@ export default function PlayerDashboard() {
 
             {/* Direct Referral URL Bar */}
             <div className="bg-[#181922] border border-white/10 rounded-2xl p-2.5 sm:p-3 flex flex-col sm:flex-row items-center gap-2.5">
-              <div className="flex-1 w-full truncate font-mono text-xs text-slate-300 bg-[#07080b] border border-white/10 rounded-xl px-3.5 py-2.5 select-all">
-                {referralUrl}
+              <div
+                suppressHydrationWarning
+                className="flex-1 w-full truncate font-mono text-xs text-slate-300 bg-[#07080b] border border-white/10 rounded-xl px-3.5 py-2.5 select-all"
+              >
+                {referralUrl || `https://tierlockplay.com/sign-up?ref=${userInviteCode}`}
               </div>
               <button
                 type="button"
