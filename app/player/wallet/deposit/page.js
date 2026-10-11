@@ -2,20 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Sidebar from '@/components/Sidebar';
 import PlayerHeader from '@/components/PlayerHeader';
+import Sidebar from '@/components/Sidebar';
 import WhatsAppChat from '@/components/WhatsAppChat';
-import FreeplayModal from '@/components/FreeplayModal';
 import {
   Wallet,
-  CheckCircle2,
-  Copy,
-  Check,
-  AlertCircle,
-  ExternalLink,
-  QrCode,
   ArrowRight,
   ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Copy,
+  Check,
+  ExternalLink,
   Loader2,
   RefreshCw,
   Clock,
@@ -39,17 +37,21 @@ export default function DepositPage() {
   const [user, setUser] = useState(null);
   const [payUsing, setPayUsing] = useState('Cash App');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [customAmount, setCustomAmount] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
   const [copied, setCopied] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isFreeplayOpen, setIsFreeplayOpen] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [isPaymentSuccess, setIsPaymentSuccess] = useState(false);
 
+  const isUsingCustom = Boolean(customAmount && parseFloat(customAmount) > 0);
   const selectedDenom = DENOMINATIONS[selectedIndex] || DENOMINATIONS[0];
+  const activeAmount = isUsingCustom
+    ? parseFloat(customAmount).toFixed(2)
+    : selectedDenom.usd;
 
   const refreshUserData = async () => {
     try {
@@ -65,7 +67,7 @@ export default function DepositPage() {
     // Check if user was redirected back from payment gateway
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const orderNo = params.get('order_no');
+      const orderNo = params.get('orderNo');
       const orderId = params.get('order_id');
       const status = params.get('status');
 
@@ -100,10 +102,21 @@ export default function DepositPage() {
   };
 
   const handleOpenModal = () => {
+    const amtNum = parseFloat(activeAmount);
+    if (isNaN(amtNum) || amtNum < 2) {
+      alert('Minimum deposit amount is $2.00. Please enter $2.00 or select a preset.');
+      return;
+    }
     setShowConfirmModal(true);
   };
 
   const handleConfirmOrder = async () => {
+    const amtNum = parseFloat(activeAmount);
+    if (isNaN(amtNum) || amtNum < 2) {
+      alert('Minimum deposit amount is $2.00');
+      return;
+    }
+
     setIsSubmitting(true);
     setStatusMessage('');
     setIsPaymentSuccess(false);
@@ -114,8 +127,8 @@ export default function DepositPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentMethod: payUsing,
-          paidAmount: parseFloat(selectedDenom.usd),
-          receivedAmount: parseFloat(selectedDenom.credits),
+          paidAmount: amtNum,
+          receivedAmount: amtNum,
           senderCashtag: '',
         }),
       });
@@ -130,8 +143,8 @@ export default function DepositPage() {
 
         setCreatedOrder({
           orderNo: data.orderNo,
-          paidAmount: selectedDenom.usd,
-          receivedAmount: selectedDenom.credits,
+          paidAmount: amtNum.toFixed(2),
+          receivedAmount: amtNum.toFixed(2),
           method: payUsing,
           redirectUrl: data.redirectUrl || null,
           token: data.token || null,
@@ -173,69 +186,41 @@ export default function DepositPage() {
           onOpenChat={() => setIsChatOpen(true)}
         />
 
-        {/* Page Content */}
-        <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
-          {/* Title Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <main className="flex-1 p-4 sm:p-8 max-w-6xl mx-auto w-full space-y-6">
+          {/* Page Heading & Current Balance Card */}
+          <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-sm">
             <div>
-              <h1 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-                <Wallet className="w-6 h-6 text-[#FFCC00]" />
-                <span>Wallet Deposit</span>
+              <span className="text-[11px] font-bold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full uppercase tracking-wider border border-amber-400/20 inline-flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5" />
+                <span>Instant Wallet Top-Up</span>
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-black text-white mt-2 uppercase tracking-tight">
+                Deposit to Wallet
               </h1>
-              <p className="text-xs text-slate-400 mt-1">
-                Instant secure funding for your Tierlock master wallet via Cash App, Apple Pay, &amp; Card.
+              <p className="text-xs text-slate-400 mt-1 max-w-lg">
+                Add credits to your Tierlock wallet via instant cashout &amp; card channels. Credits are immediately transferable to Juwa, Fire Kirin, Game Vault &amp; more.
               </p>
             </div>
-            <Link
-              href="/player/wallet/deposit-records"
-              className="text-xs font-bold text-slate-950 bg-[#FFCC00] hover:bg-yellow-300 px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
-            >
-              <span>Deposit Records</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+
+            <div className="bg-[#181922] p-4 sm:p-5 rounded-2xl border border-white/10 shrink-0 min-w-[200px] text-left sm:text-right">
+              <span className="text-xs text-slate-400 font-medium block">Current Available Balance</span>
+              <span className="text-2xl sm:text-3xl font-black text-[#FFCC00] font-mono drop-shadow-[0_0_10px_rgba(255,204,0,0.3)]">
+                ${Number(user?.wallet_balance || 0).toFixed(2)} USD
+              </span>
+            </div>
           </div>
 
-          {/* Success Banner */}
-          {isPaymentSuccess && (
-            <div className="p-5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-6 h-6 shrink-0 text-emerald-400" />
-                <div>
-                  <h3 className="font-bold text-sm">Payment Verified!</h3>
-                  <p className="text-xs text-emerald-300">
-                    Your wallet balance has been updated in real-time. You can now load any game platform!
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/player/game-platforms"
-                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-wide shrink-0 transition"
-              >
-                Go Play Games &rarr;
-              </Link>
-            </div>
-          )}
-
-          {/* CREATED ORDER PAYMENT SCREEN */}
           {createdOrder ? (
-            <div className="max-w-2xl mx-auto bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/30 shadow-[0_0_50px_rgba(255,204,0,0.08)] space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#FFCC00] animate-pulse"></span>
-                  <span className="text-xs font-black uppercase text-[#FFCC00] tracking-wider">
-                    Secure Instant Checkout
-                  </span>
+            /* Created Deposit State / Order Pending Screen */
+            <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/40 space-y-6 shadow-2xl animate-in fade-in duration-200">
+              <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-[#FFCC00] flex items-center justify-center">
+                  <Clock className="w-5 h-5 animate-spin" />
                 </div>
-                <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-slate-300">
-                  256-Bit SSL Encrypted
-                </span>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-black text-white uppercase tracking-tight">Complete Payment Online</h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Click the button below to complete checkout on the secure hosted payment page. Your wallet credits will be loaded automatically.
-                </p>
+                <div>
+                  <h2 className="text-lg font-black text-white uppercase">Checkout Order Created</h2>
+                  <p className="text-xs text-slate-400">Order #{createdOrder.orderNo}</p>
+                </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-1">
@@ -401,11 +386,14 @@ export default function DepositPage() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
                     {DENOMINATIONS.map((item, idx) => {
-                      const isSelected = selectedIndex === idx;
+                      const isSelected = !isUsingCustom && selectedIndex === idx;
                       return (
                         <div
                           key={item.credits}
-                          onClick={() => setSelectedIndex(idx)}
+                          onClick={() => {
+                            setSelectedIndex(idx);
+                            setCustomAmount('');
+                          }}
                           className={`bg-[#101117] rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-between relative ${
                             isSelected
                               ? 'border-2 border-[#FFCC00] shadow-[0_0_25px_rgba(255,204,0,0.15)] ring-1 ring-[#FFCC00]'
@@ -423,6 +411,36 @@ export default function DepositPage() {
                     })}
                   </div>
                 </div>
+
+                {/* REQUIREMENT 7: Custom Amount Blank ($2 to $100+) */}
+                <div className="bg-[#101117] border border-white/10 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Or Enter Custom Amount ($2.00 to $100.00+)
+                    </label>
+                    {isUsingCustom && (
+                      <span className="text-[10px] font-black uppercase text-[#FFCC00] bg-[#FFCC00]/10 border border-[#FFCC00]/30 px-2 py-0.5 rounded-full">
+                        Custom Amount Selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative flex items-center border border-white/10 rounded-xl px-4 py-3 focus-within:border-[#FFCC00] bg-[#181922]">
+                    <span className="text-[#FFCC00] font-black text-sm mr-2">$</span>
+                    <input
+                      type="number"
+                      min="2"
+                      max="1000"
+                      step="any"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      placeholder="Write your custom amount (e.g. 2.00, 15.00, 75.00)"
+                      className="w-full bg-transparent text-white text-sm font-bold focus:outline-none font-mono placeholder:font-normal placeholder-slate-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Customer can write their own deposit amount starting from <strong className="text-white">$2.00</strong> up to the maximum limit on TapTapUp.
+                  </p>
+                </div>
               </div>
 
               {/* Right Column: Order Details Card */}
@@ -435,13 +453,13 @@ export default function DepositPage() {
                   <div className="space-y-4 text-xs divide-y divide-white/10">
                     <div className="flex justify-between items-center pt-2">
                       <span className="text-slate-400">Deposit Amount</span>
-                      <span className="font-bold text-white">${selectedDenom.usd} USD</span>
+                      <span className="font-bold text-white">${activeAmount} USD</span>
                     </div>
 
                     <div className="flex justify-between items-center pt-3">
                       <span className="text-slate-400">Wallet Credits to Receive</span>
                       <span className="font-black text-[#FFCC00] text-base font-mono">
-                        ${selectedDenom.credits}
+                        ${activeAmount}
                       </span>
                     </div>
 
@@ -460,7 +478,7 @@ export default function DepositPage() {
                     onClick={handleOpenModal}
                     className="w-full py-3.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_4px_16px_rgba(255,204,0,0.3)] flex items-center justify-center gap-2 transform hover:-translate-y-0.5 active:translate-y-0"
                   >
-                    <span>Proceed to Deposit (${selectedDenom.usd})</span>
+                    <span>Proceed to Deposit (${activeAmount})</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -487,11 +505,11 @@ export default function DepositPage() {
             <div className="bg-[#181922] border border-white/10 rounded-2xl p-4 space-y-3 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-400">Deposit Amount:</span>
-                <span className="font-bold text-white">${selectedDenom.usd} USD</span>
+                <span className="font-bold text-white">${activeAmount} USD</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Wallet Credits to Receive:</span>
-                <span className="font-bold text-[#FFCC00] font-mono text-sm">${selectedDenom.credits}</span>
+                <span className="font-bold text-[#FFCC00] font-mono text-sm">${activeAmount}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Selected Channel:</span>
@@ -520,7 +538,7 @@ export default function DepositPage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                    <span>Creating Order...</span>
+                    <span>Processing...</span>
                   </>
                 ) : (
                   <span>Confirm &amp; Pay</span>
@@ -531,17 +549,11 @@ export default function DepositPage() {
         </div>
       )}
 
-      {/* WhatsApp Chat & Freeplay Modals */}
+      {/* WhatsApp Chat Drawer */}
       <WhatsAppChat
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
         user={user}
-      />
-      <FreeplayModal
-        isOpen={isFreeplayOpen}
-        onClose={() => setIsFreeplayOpen(false)}
-        user={user}
-        onClaimed={refreshUserData}
       />
     </div>
   );
