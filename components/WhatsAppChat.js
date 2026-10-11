@@ -196,6 +196,38 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
         </div>
       )}
 
+      {/* Floating Right Side Bottom Chat Support Button */}
+      {!isOpen && (
+        <button
+          type="button"
+          onClick={handleOpen}
+          aria-label="Open 24/7 Live Support Chat"
+          className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-40 group flex items-center gap-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white pl-3.5 pr-4 py-3 rounded-full shadow-[0_8px_30px_rgba(16,185,129,0.45)] border border-emerald-300/30 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+        >
+          <div className="relative">
+            <MessageSquare className="w-5 h-5 text-white" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-300 rounded-full animate-ping"></span>
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-300 rounded-full"></span>
+          </div>
+
+          <div className="flex flex-col text-left">
+            <span className="text-xs font-black tracking-wide uppercase leading-tight">
+              Chat Support
+            </span>
+            <span className="text-[10px] text-emerald-100 font-semibold leading-none flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse"></span>
+              Online 24/7
+            </span>
+          </div>
+
+          {unreadCount > 0 && (
+            <span className="ml-1 bg-rose-500 text-white font-black text-[10px] px-2 py-0.5 rounded-full animate-bounce shadow-md">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      )}
+
       {/* 2. Humanized Live Chat Desk Modal (Triggered via Header or Action) */}
       {isOpen && (
         <div className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 w-full sm:w-96 sm:max-w-[calc(100vw-32px)] h-[100dvh] sm:h-[560px] sm:max-h-[calc(100vh-100px)] bg-[#121b22] border-0 sm:border sm:border-[#2a3942] rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in sm:zoom-in-95 duration-200 font-sans">

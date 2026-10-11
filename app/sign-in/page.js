@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
+import WhatsAppChat from '@/components/WhatsAppChat';
 import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { getOrCreateDeviceId } from '@/lib/device';
 
@@ -207,6 +208,9 @@ export default function SignInPage() {
       <footer className="text-center text-[10px] sm:text-xs text-slate-500 py-2 sm:py-4 relative z-10">
         Copyright © 2026 TierlockPlay (tierlockplay.com). All rights reserved.
       </footer>
+
+      {/* Floating Chat Support */}
+      <WhatsAppChat />
     </div>
   );
 }
