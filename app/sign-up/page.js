@@ -124,25 +124,25 @@ function SignUpContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07080b] flex flex-col justify-between py-10 px-4 sm:px-6 relative font-sans overflow-hidden">
+    <div className="min-h-screen bg-[#07080b] flex flex-col justify-between py-4 sm:py-10 px-3.5 sm:px-6 relative font-sans overflow-hidden">
       {/* Background radial gold glow effect */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FFCC00]/5 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="flex-1 flex items-center justify-center relative z-10">
+      <div className="flex-1 flex items-center justify-center relative z-10 my-auto">
         {/* Main Card */}
-        <div className="bg-[#101117] border border-[#FFCC00]/25 rounded-3xl max-w-md w-full p-8 sm:p-10 shadow-[0_0_50px_rgba(255,204,0,0.08)]">
+        <div className="bg-[#101117] border border-[#FFCC00]/25 rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-8 shadow-[0_0_50px_rgba(255,204,0,0.08)]">
           {/* Official Logo Badge */}
-          <div className="flex justify-center mb-6">
-            <Logo size="large" href="/sign-in" theme="dark" />
+          <div className="flex justify-center mb-3 sm:mb-5">
+            <Logo size="medium" href="/sign-in" theme="dark" />
           </div>
 
           {/* Title & Subtitle */}
-          <div className="text-center mb-6">
-            <h1 className="text-xl font-black text-white tracking-tight uppercase">Create Game Wallet</h1>
-            <p className="text-xs text-[#FFCC00] font-semibold tracking-wider uppercase mt-1">
+          <div className="text-center mb-4 sm:mb-6">
+            <h1 className="text-lg sm:text-xl font-black text-white tracking-tight uppercase">Create Game Wallet</h1>
+            <p className="text-[11px] sm:text-xs text-[#FFCC00] font-semibold tracking-wider uppercase mt-0.5">
               VIP Player Registration • TierlockPlay
             </p>
-            <div className="w-12 h-0.5 bg-[#FFCC00] mx-auto mt-2 rounded-full shadow-[0_0_8px_#FFCC00]"></div>
+            <div className="w-10 h-0.5 bg-[#FFCC00] mx-auto mt-2 rounded-full shadow-[0_0_8px_#FFCC00]"></div>
           </div>
 
           {/* Referral Link Notification (if arrived via referral link) */}

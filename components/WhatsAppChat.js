@@ -196,11 +196,11 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
         </div>
       )}
 
-      {/* 2. Humanized Live Chat Desk Modal (Triggered via Header Support button) */}
+      {/* 2. Humanized Live Chat Desk Modal (Triggered via Header or Action) */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-32px)] h-[560px] max-h-[calc(100vh-100px)] bg-[#121b22] border border-[#2a3942] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans">
+        <div className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 w-full sm:w-96 sm:max-w-[calc(100vw-32px)] h-[100dvh] sm:h-[560px] sm:max-h-[calc(100vh-100px)] bg-[#121b22] border-0 sm:border sm:border-[#2a3942] rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in sm:zoom-in-95 duration-200 font-sans">
           {/* Header with Human Support Representative Theme */}
-          <div className="bg-[#005c4b] px-4 py-3 text-white flex items-center justify-between shadow-md select-none">
+          <div className="bg-[#005c4b] px-4 py-3 text-white flex items-center justify-between shadow-md select-none shrink-0">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-base border-2 border-emerald-400/50 shadow-inner">
@@ -222,7 +222,7 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
             <button
               type="button"
               onClick={handleClose}
-              className="text-white/80 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition cursor-pointer"
+              className="text-white/80 hover:text-white p-2 rounded-full hover:bg-white/10 transition cursor-pointer"
               title="Close Support Desk"
             >
               <X className="w-5 h-5" />
@@ -230,21 +230,21 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
           </div>
 
           {/* Real Human Support Notice Bar */}
-          <div className="bg-[#1f2c34] px-3.5 py-1.5 border-b border-[#2a3942] flex items-center gap-2 text-[11px] text-slate-300 select-none">
+          <div className="bg-[#1f2c34] px-3.5 py-1.5 border-b border-[#2a3942] flex items-center gap-2 text-[11px] text-slate-300 select-none shrink-0">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span>You are speaking with a dedicated customer care agent.</span>
           </div>
 
-          {/* Messages Area */}
+          {/* Messages Area - Starts from bottom via mt-auto */}
           <div
-            className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#0b141a]"
+            className="flex-1 p-4 overflow-y-auto bg-[#0b141a] flex flex-col min-h-0"
             style={{
               backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(32, 44, 51, 0.4) 1px, transparent 1px)',
               backgroundSize: '20px 20px',
             }}
           >
             {messages.length === 0 ? (
-              <div className="text-center py-12 text-[#8696a0] text-xs space-y-2 select-none">
+              <div className="my-auto text-center py-8 text-[#8696a0] text-xs space-y-2 select-none">
                 <div className="w-12 h-12 rounded-full bg-[#182229] mx-auto flex items-center justify-center text-emerald-400">
                   <MessageSquare className="w-6 h-6" />
                 </div>
@@ -254,55 +254,60 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
                 </p>
               </div>
             ) : (
-              messages.map((m, idx) => {
-                const isUser = m.sender_type === 'user';
-                return (
-                  <div
-                    key={m.id || idx}
-                    className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
-                  >
+              <div className="mt-auto space-y-3 flex flex-col justify-end">
+                {messages.map((m, idx) => {
+                  const isUser = m.sender_type === 'user';
+                  return (
                     <div
-                      className={`max-w-[85%] rounded-lg px-3.5 py-2 text-xs relative shadow-sm ${
-                        isUser
-                          ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-none'
-                          : 'bg-[#202c33] text-[#d1d7db] rounded-tl-none border border-[#2a3942]'
-                      }`}
+                      key={m.id || idx}
+                      className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
                     >
-                      {!isUser && (
-                        <div className="text-[10px] font-bold text-emerald-400 mb-0.5 flex items-center gap-1">
-                          <UserCheck className="w-3 h-3 text-emerald-400" />
-                          <span>{m.sender_name || 'Support Agent'}</span>
+                      <div
+                        className={`max-w-[85%] rounded-lg px-3.5 py-2 text-xs relative shadow-sm ${
+                          isUser
+                            ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-none'
+                            : 'bg-[#202c33] text-[#d1d7db] rounded-tl-none border border-[#2a3942]'
+                        }`}
+                      >
+                        {!isUser && (
+                          <div className="text-[10px] font-bold text-emerald-400 mb-0.5 flex items-center gap-1">
+                            <UserCheck className="w-3 h-3 text-emerald-400" />
+                            <span>{m.sender_name || 'Support Agent'}</span>
+                          </div>
+                        )}
+                        <p className="whitespace-pre-wrap leading-relaxed break-words">{m.message}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1 text-[9px] text-[#8696a0]">
+                          <span>{m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                          {isUser && <CheckCheck className="w-3 h-3 text-[#53bdeb]" />}
                         </div>
-                      )}
-                      <p className="whitespace-pre-wrap leading-relaxed break-words">{m.message}</p>
-                      <div className="flex items-center justify-end gap-1 mt-1 text-[9px] text-[#8696a0]">
-                        <span>{m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                        {isUser && <CheckCheck className="w-3 h-3 text-[#53bdeb]" />}
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Box */}
+          {/* Input Box - Pinned to bottom, adapts to mobile virtual keyboard */}
           <form
             onSubmit={handleSend}
-            className="bg-[#202c33] p-2.5 flex items-center gap-2 border-t border-[#2a3942]"
+            className="bg-[#202c33] p-2.5 sm:p-3 flex items-center gap-2 border-t border-[#2a3942] shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
           >
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
+              onFocus={() => {
+                setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 250);
+              }}
               placeholder="Type your message to support..."
-              className="flex-1 bg-[#2a3942] text-[#d1d7db] text-xs px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder-[#8696a0]"
+              className="flex-1 bg-[#2a3942] text-[#d1d7db] text-xs sm:text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder-[#8696a0]"
             />
             <button
               type="submit"
               disabled={!newMessage.trim() || isLoading}
-              className="w-9 h-9 rounded-full bg-[#00a884] hover:bg-[#008f72] disabled:opacity-40 text-white flex items-center justify-center transition shadow cursor-pointer"
+              className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f72] disabled:opacity-40 text-white flex items-center justify-center transition shadow cursor-pointer shrink-0"
               title="Send Message"
             >
               <Send className="w-4 h-4" />

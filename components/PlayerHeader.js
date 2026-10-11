@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Menu,
@@ -10,7 +11,10 @@ import {
   MessageCircle,
   Globe,
   CheckCircle2,
-  X
+  X,
+  ShieldCheck,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 
 export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLoginToast = false }) {
@@ -95,18 +99,39 @@ export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLo
           </div>
         )}
 
-        {/* WhatsApp Chat Desk Trigger */}
-        <button
-          onClick={handleOpenChat}
-          className="relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#25d366]/15 text-[#25d366] hover:bg-[#25d366]/25 border border-[#25d366]/40 text-xs font-bold transition shadow-xs"
-          title="WhatsApp Live Support"
+        {/* KYC Verification Button (Replaces Support button as requested) */}
+        <Link
+          href="/player/settings"
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-xs ${
+            user?.kyc_status === 'VERIFIED'
+              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+              : user?.kyc_status === 'PENDING'
+              ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
+              : user?.kyc_status === 'REJECTED'
+              ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/25'
+              : 'bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/40 hover:bg-[#FFCC00]/25'
+          }`}
+          title="KYC Account Verification"
         >
-          <MessageCircle className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Support</span>
-          {unreadChatCount > 0 && (
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+          {user?.kyc_status === 'VERIFIED' ? (
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          ) : user?.kyc_status === 'PENDING' ? (
+            <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          ) : user?.kyc_status === 'REJECTED' ? (
+            <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+          ) : (
+            <ShieldCheck className="w-3.5 h-3.5 text-[#FFCC00] shrink-0" />
           )}
-        </button>
+          <span>
+            {user?.kyc_status === 'VERIFIED'
+              ? 'KYC Verified'
+              : user?.kyc_status === 'PENDING'
+              ? 'KYC Pending'
+              : user?.kyc_status === 'REJECTED'
+              ? 'KYC Rejected'
+              : 'KYC'}
+          </span>
+        </Link>
 
         {/* Logout Button */}
         <button

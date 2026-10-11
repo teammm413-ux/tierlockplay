@@ -228,7 +228,7 @@ export default function Sidebar({ user }) {
       )}
 
       {/* 3. Mobile Bottom Navigation Bar (< lg screens as per sample site) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-[#0c0d14]/95 backdrop-blur-xl border-t border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.7)] select-none">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-[#0c0d14]/95 backdrop-blur-xl border-t border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.7)] select-none pb-[env(safe-area-inset-bottom,0px)]">
         <div className="grid grid-cols-5 h-16 max-w-lg mx-auto px-1 items-center">
           {mobileBottomNavItems.map((item) => {
             const Icon = item.icon;
