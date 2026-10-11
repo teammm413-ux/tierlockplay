@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
+import { getOrCreateDeviceId } from '@/lib/device';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -40,12 +41,14 @@ export default function SignInPage() {
 
     setIsLoading(true);
     try {
+      const deviceId = getOrCreateDeviceId();
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           usernameOrEmail: formData.usernameOrEmail,
           password: formData.password,
+          deviceId,
         }),
       });
 

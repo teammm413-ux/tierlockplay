@@ -122,6 +122,30 @@ export default function AdminUsersPage() {
     } catch (err) {}
   };
 
+  const handleResetDevice = async (user) => {
+    if (!confirm(`Reset device lock for player "${user.username}"? This will allow them to login or bind a new device.`)) return;
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reset_device',
+          userId: user.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionNotice(data.message);
+        loadUsers(true);
+      } else {
+        alert(data.message || 'Failed to reset device lock');
+      }
+    } catch (err) {
+      alert('Error resetting device lock');
+    }
+  };
+
   const handleKycAction = async (action) => {
     if (!kycModalUser || isProcessingKyc) return;
     if (action === 'reject_kyc' && !rejectionReason.trim()) {
@@ -232,7 +256,26 @@ export default function AdminUsersPage() {
                     <tr key={u.id} className="hover:bg-white/[0.03] transition">
                       <td className="px-5 py-4">
                         <div className="font-bold text-white text-sm">{u.username}</div>
-                        <span className="text-[10px] text-slate-500 font-mono">ID: #{u.id} • Ref: {u.invite_code}</span>
+                        <div className="text-[10px] text-slate-500 font-mono">ID: #{u.id} • Ref: {u.invite_code}</div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {u.device_id ? (
+                            <>
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30" title={`Bound Device: ${u.device_id}`}>
+                                🔒 Device Locked
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleResetDevice(u)}
+                                className="text-[9px] font-bold text-slate-400 hover:text-rose-400 underline transition cursor-pointer"
+                                title="Reset device lock so user can login from a new device"
+                              >
+                                Reset Lock
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-[9px] text-slate-600">No device locked</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4">
                         <div className="text-slate-300 font-mono">{u.email}</div>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, ShieldCheck, Gift } from 'lucide-react';
+import { getOrCreateDeviceId } from '@/lib/device';
 
 function SignUpContent() {
   const router = useRouter();
@@ -91,6 +92,7 @@ function SignUpContent() {
 
     setIsSubmitting(true);
     try {
+      const deviceId = getOrCreateDeviceId();
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,6 +101,7 @@ function SignUpContent() {
           email: formData.email,
           password: formData.password,
           inviteCode: inviteCode.trim() || undefined,
+          deviceId,
         }),
       });
 

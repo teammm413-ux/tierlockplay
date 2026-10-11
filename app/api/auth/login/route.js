@@ -35,10 +35,43 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Invalid username/email or password' }, { status: 401 });
     }
 
-    // Update last login
+    // Single Device Enforcement Policy
+    const cookieDeviceId = request.cookies.get('trp_device_id')?.value || '';
+    const deviceId = ((body.deviceId || cookieDeviceId) || '').trim();
+
+    if (deviceId) {
+      // Check if this device is already bound to a DIFFERENT account
+      const conflictingUser = await User.findOne({
+        device_id: deviceId,
+        _id: { $ne: user._id }
+      });
+
+      if (conflictingUser) {
+        return NextResponse.json({
+          success: false,
+          message: `Single Device Policy: This device is already linked to account "${conflictingUser.username}". Multiple accounts are not allowed on one device. Only 1 account is permitted per device.`
+        }, { status: 403 });
+      }
+
+      // Bind device to current user if not bound yet
+      if (!user.device_id) {
+        user.device_id = deviceId;
+      }
+      user.last_device_id = deviceId;
+    }
+
+    // Update last login & persist device_id directly to database
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
     user.last_login_time = now;
-    await user.save();
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          last_login_time: now,
+          ...(deviceId ? { device_id: user.device_id || deviceId, last_device_id: deviceId } : {})
+        }
+      }
+    );
 
     const safeUser = {
       id: user._id.toString(),
@@ -74,6 +107,16 @@ export async function POST(request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
     });
+
+    if (deviceId) {
+      response.cookies.set('trp_device_id', deviceId, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
+      });
+    }
 
     return response;
   } catch (error) {

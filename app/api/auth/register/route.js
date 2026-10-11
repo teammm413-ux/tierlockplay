@@ -54,6 +54,23 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Email is already registered' }, { status: 400 });
     }
 
+    // Single Device Enforcement Policy
+    const cookieDeviceId = request.cookies.get('trp_device_id')?.value || '';
+    const deviceId = ((body.deviceId || cookieDeviceId) || '').trim();
+
+    if (deviceId) {
+      const existingDeviceUser = await User.findOne({
+        device_id: deviceId
+      });
+
+      if (existingDeviceUser) {
+        return NextResponse.json({
+          success: false,
+          message: `Registration blocked: This device is already registered to account "${existingDeviceUser.username}". Only 1 account is allowed per device. Multiple accounts on a single device are prohibited.`
+        }, { status: 403 });
+      }
+    }
+
     // Generate unique 6-character referral code for new user
     let generatedInviteCode = '';
     const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -98,7 +115,13 @@ export async function POST(request) {
       last_login_time: now,
       last_login_ip: '127.0.0.1',
       last_login_device: 'Macos',
+      device_id: deviceId,
+      last_device_id: deviceId,
     });
+
+    if (deviceId) {
+      await User.updateOne({ _id: newUserDoc._id }, { $set: { device_id: deviceId, last_device_id: deviceId } });
+    }
 
     const newUser = {
       id: newUserDoc._id.toString(),
@@ -128,6 +151,16 @@ export async function POST(request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
+
+    if (deviceId) {
+      response.cookies.set('trp_device_id', deviceId, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
+      });
+    }
 
     return response;
   } catch (error) {

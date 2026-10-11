@@ -55,6 +55,7 @@ export async function GET(request) {
       is_subscribed: !!u.is_subscribed,
       last_login_time: u.last_login_time || '',
       last_login_ip: u.last_login_ip || '',
+      device_id: u.device_id || '',
       created_at: u.created_at,
     }));
 
@@ -159,6 +160,16 @@ export async function POST(request) {
       return NextResponse.json({
         success: true,
         message: `KYC status reset to INCOMPLETE for ${user.username}.`
+      });
+    }
+
+    if (action === 'reset_device') {
+      user.device_id = '';
+      user.last_device_id = '';
+      await user.save();
+      return NextResponse.json({
+        success: true,
+        message: `Device lock cleared for ${user.username}. Player can now log in or switch to a new device.`
       });
     }
 
