@@ -169,7 +169,7 @@ export default function GamePlatformsPage() {
                 <span>Sweepstakes Game Platforms</span>
               </h1>
               <p className="text-xs text-slate-400 mt-1">
-                Request in-game accounts, view your game credentials, and load credits directly from your Tierlock wallet.
+                Requesting game acc, view game cred and load credit direct from auto deposit feature.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -320,10 +320,11 @@ export default function GamePlatformsPage() {
                           href={p.download_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition"
-                          title="Download APK / Play Game"
+                          className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition flex items-center gap-1.5 text-xs font-bold shrink-0 border border-white/10 hover:border-white/30"
+                          title="Download App"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-3.5 h-3.5 text-[#FFCC00]" />
+                          <span>App</span>
                         </a>
                       </div>
                     </div>

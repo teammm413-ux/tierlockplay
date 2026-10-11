@@ -6,11 +6,54 @@ import PlayerHeader from '@/components/PlayerHeader';
 import Sidebar from '@/components/Sidebar';
 import WhatsAppChat from '@/components/WhatsAppChat';
 import FreeplayModal from '@/components/FreeplayModal';
-import { ChevronDown, AlertCircle, CheckCircle2, ArrowRight, Wallet, ArrowUpRight, Loader2 } from 'lucide-react';
+import {
+  ChevronDown,
+  AlertCircle,
+  CheckCircle2,
+  Wallet,
+  Loader2,
+  CreditCard,
+  Sparkles,
+  ShieldCheck
+} from 'lucide-react';
+
+const DEFAULT_METHODS = [
+  {
+    name: 'Cash App',
+    field_label: '$Cashtag',
+    field_placeholder: 'e.g. $JohnDoe',
+    instructions: 'Start with $. Must begin with a letter, up to 20 characters.'
+  },
+  {
+    name: 'Chime',
+    field_label: 'Chime Sign / Email / Phone',
+    field_placeholder: 'e.g. $ChimeSign or email@example.com',
+    instructions: 'Enter your registered Chime Sign, email, or mobile phone.'
+  },
+  {
+    name: 'Apple Pay',
+    field_label: 'Apple Pay Phone / Email',
+    field_placeholder: 'e.g. +1 555-0199 or appleid@icloud.com',
+    instructions: 'Enter your Apple Pay registered phone number or Apple ID.'
+  },
+  {
+    name: 'Google Pay',
+    field_label: 'Google Pay Phone / Email',
+    field_placeholder: 'e.g. +1 555-0199 or gpay@gmail.com',
+    instructions: 'Enter your Google Pay registered mobile phone or Gmail address.'
+  },
+  {
+    name: 'PayPal',
+    field_label: 'PayPal Email / Phone',
+    field_placeholder: 'e.g. paypal@example.com',
+    instructions: 'Enter your registered PayPal email address or phone number.'
+  }
+];
 
 export default function WithdrawalPage() {
   const [user, setUser] = useState(null);
-  const [channel, setChannel] = useState('Cash APP');
+  const [availableMethods, setAvailableMethods] = useState(DEFAULT_METHODS);
+  const [selectedMethodName, setSelectedMethodName] = useState('Cash App');
   const [paymentInfo, setPaymentInfo] = useState('');
   const [amount, setAmount] = useState('50');
   const [savedMethods, setSavedMethods] = useState([]);
@@ -19,7 +62,7 @@ export default function WithdrawalPage() {
   const [successData, setSuccessData] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const presets = ['50.00', '100.00', '200.00', '500.00'];
+  const presets = ['20.00', '50.00', '100.00', '200.00', '500.00'];
 
   const refreshUserData = async () => {
     try {
@@ -32,7 +75,18 @@ export default function WithdrawalPage() {
   useEffect(() => {
     refreshUserData();
 
-    // Fetch saved payout methods
+    // Fetch configured withdrawal payment methods from Master Panel
+    fetch('/api/wallet/withdrawal-methods')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.methods) && d.methods.length > 0) {
+          setAvailableMethods(d.methods);
+          setSelectedMethodName(d.methods[0].name);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch user's saved payout methods
     fetch('/api/wallet/payment-methods')
       .then((r) => r.json())
       .then((d) => {
@@ -41,10 +95,8 @@ export default function WithdrawalPage() {
           const defaultMethod = d.methods.find((m) => m.is_default) || d.methods[0];
           if (defaultMethod) {
             setPaymentInfo(defaultMethod.account_identifier);
-            if (defaultMethod.type === 'Paypal') {
-              setChannel('Paypal');
-            } else {
-              setChannel('Cash APP');
+            if (defaultMethod.type) {
+              setSelectedMethodName(defaultMethod.type);
             }
           }
         }
@@ -52,25 +104,37 @@ export default function WithdrawalPage() {
       .catch(() => {});
   }, []);
 
+  const activeMethodObj =
+    availableMethods.find((m) => m.name.toLowerCase() === selectedMethodName.toLowerCase()) ||
+    availableMethods[0] ||
+    DEFAULT_METHODS[0];
+
   const parsedAmount = parseFloat(amount) || 0;
-  // 5.00% handling fee
-  const handlingFee = parseFloat((parsedAmount * 0.05).toFixed(2));
-  const receivingAmount = parseFloat(Math.max(0, parsedAmount - handlingFee).toFixed(2));
+  // No handling fee (Requirement 13)
+  const receivingAmount = parsedAmount;
 
   const handlePresetClick = (val) => {
     setAmount(parseFloat(val).toString());
   };
 
-  const handleSavedMethodSelect = (e) => {
+  const handleMethodDropdownChange = (e) => {
     const val = e.target.value;
     if (!val) return;
-    const found = savedMethods.find((m) => m.id === val || m.account_identifier === val);
-    if (found) {
-      setPaymentInfo(found.account_identifier);
-      if (found.type === 'Paypal') {
-        setChannel('Paypal');
-      } else {
-        setChannel('Cash APP');
+
+    // Check if user picked a saved method or a raw method name
+    const foundSaved = savedMethods.find((m) => m.id === val);
+    if (foundSaved) {
+      setSelectedMethodName(foundSaved.type);
+      setPaymentInfo(foundSaved.account_identifier);
+      return;
+    }
+
+    const foundMethod = availableMethods.find((m) => m.name === val);
+    if (foundMethod) {
+      setSelectedMethodName(foundMethod.name);
+      // Auto-prefix '$' if Cash App
+      if (foundMethod.name.toLowerCase().includes('cash app') && !paymentInfo.startsWith('$') && paymentInfo.length > 0) {
+        setPaymentInfo('$' + paymentInfo.replace(/^\$+/, ''));
       }
     }
   };
@@ -79,8 +143,9 @@ export default function WithdrawalPage() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (parsedAmount < 20) {
-      setErrorMsg('Minimum withdrawal amount is $20.00');
+    // Requirement 12: No minimum withdrawal limit! (must only be > 0)
+    if (parsedAmount <= 0) {
+      setErrorMsg('Please enter a valid withdrawal amount.');
       return;
     }
 
@@ -92,7 +157,7 @@ export default function WithdrawalPage() {
     }
 
     if (!paymentInfo.trim()) {
-      setErrorMsg(channel === 'Cash APP' ? 'Please enter your $Cashtag' : 'Please enter your PayPal email or phone');
+      setErrorMsg(`Please enter your ${activeMethodObj.field_label || 'account details'}`);
       return;
     }
 
@@ -102,7 +167,7 @@ export default function WithdrawalPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          paymentMethod: channel,
+          paymentMethod: activeMethodObj.name,
           paymentInfo: paymentInfo.trim(),
           amount: parsedAmount,
         }),
@@ -114,8 +179,7 @@ export default function WithdrawalPage() {
           orderNo: data.orderNo,
           amount: parsedAmount,
           receivingAmount: receivingAmount,
-          handlingFee: handlingFee,
-          channel: channel,
+          channel: activeMethodObj.name,
           paymentInfo: paymentInfo.trim(),
         });
         refreshUserData();
@@ -151,43 +215,6 @@ export default function WithdrawalPage() {
             <div className="w-12 h-0.5 bg-[#FFCC00] mx-auto mt-2 rounded-full shadow-[0_0_8px_#FFCC00]"></div>
           </div>
 
-          {/* Select Channel */}
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5">
-              Select Payout Channel
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setChannel('Cash APP');
-                  if (!paymentInfo.startsWith('$') && paymentInfo.length > 0) {
-                    setPaymentInfo('$' + paymentInfo);
-                  }
-                }}
-                className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition ${
-                  channel === 'Cash APP'
-                    ? 'bg-[#FFCC00] text-slate-950 shadow-lg shadow-yellow-500/20'
-                    : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
-                }`}
-              >
-                Cash APP
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setChannel('Paypal')}
-                className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition ${
-                  channel === 'Paypal'
-                    ? 'bg-[#FFCC00] text-slate-950 shadow-lg shadow-yellow-500/20'
-                    : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
-                }`}
-              >
-                Paypal
-              </button>
-            </div>
-          </div>
-
           {errorMsg && (
             <div className="mb-6 p-4 bg-red-950/40 border border-red-500/40 rounded-2xl text-xs text-red-400 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
@@ -207,41 +234,86 @@ export default function WithdrawalPage() {
                 </span>
               </div>
 
-              {/* Select saved method dropdown */}
-              <div className="relative">
-                <select
-                  onChange={handleSavedMethodSelect}
-                  className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none focus:outline-none focus:border-[#FFCC00] pr-10 cursor-pointer"
-                >
-                  <option value="" className="bg-[#181922]">Select a saved method</option>
-                  {savedMethods.map((m) => (
-                    <option key={m.id} value={m.id} className="bg-[#181922]">
-                      {m.type} - {m.account_identifier} {m.is_default ? '(Default)' : ''}
+              {/* Requirement 9: Replace the Select a saved method to "Choose the payment method" */}
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5 uppercase tracking-wider">
+                  Payment Method
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedMethodName}
+                    onChange={handleMethodDropdownChange}
+                    className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none focus:outline-none focus:border-[#FFCC00] pr-10 cursor-pointer font-medium"
+                  >
+                    <option value="" disabled className="bg-[#181922] text-slate-500">
+                      Choose the payment method
                     </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                  <ChevronDown className="w-4 h-4" />
+                    {availableMethods.map((m) => (
+                      <option key={m.id || m.name} value={m.name} className="bg-[#181922]">
+                        {m.name}
+                      </option>
+                    ))}
+                    {savedMethods.length > 0 && (
+                      <optgroup label="Saved Accounts" className="bg-[#181922] text-[#FFCC00]">
+                        {savedMethods.map((sm) => (
+                          <option key={sm.id} value={sm.id} className="bg-[#181922] text-white">
+                            Saved: {sm.type} ({sm.account_identifier})
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+
+                {/* Quick select pills for convenience */}
+                <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                  {availableMethods.map((m) => {
+                    const isSelected = selectedMethodName.toLowerCase() === m.name.toLowerCase();
+                    return (
+                      <button
+                        key={m.id || m.name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedMethodName(m.name);
+                          if (m.name.toLowerCase().includes('cash app') && !paymentInfo.startsWith('$') && paymentInfo.length > 0) {
+                            setPaymentInfo('$' + paymentInfo.replace(/^\$+/, ''));
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-[#FFCC00] text-slate-950 font-black shadow-md'
+                            : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
+                        }`}
+                      >
+                        <span>{m.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Cashtag or Paypal input */}
+              {/* Dynamic Account Detail input */}
               <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  {activeMethodObj.field_label || 'Account Details'}
+                </label>
                 <input
                   type="text"
                   value={paymentInfo}
                   onChange={(e) => setPaymentInfo(e.target.value)}
-                  placeholder={channel === 'Cash APP' ? '$Cashtag' : 'Paypal Email / Phone'}
+                  placeholder={activeMethodObj.field_placeholder || 'Enter account identifier'}
                   className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#FFCC00]"
                 />
                 <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
-                  {channel === 'Cash APP'
-                    ? 'Start with $. Then a letter, up to 19 letters/digits/underscore (total 2–20). Must begin with a letter.'
-                    : 'Enter the registered PayPal email address or phone number for receiving transfer.'}
+                  {activeMethodObj.instructions ||
+                    `Enter your registered ${activeMethodObj.name} account information for receiving transfer.`}
                 </p>
               </div>
 
-              {/* Withdrawal Amount Input */}
+              {/* Withdrawal Amount Input (Requirement 12: No minimum withdrawal limit) */}
               <div className="relative pt-1">
                 <label className="text-xs font-bold text-slate-300 block mb-1.5">
                   Withdrawal Amount
@@ -250,8 +322,8 @@ export default function WithdrawalPage() {
                   <span className="text-[#FFCC00] font-black text-sm mr-2">$</span>
                   <input
                     type="number"
-                    min="20"
-                    step="1"
+                    min="1"
+                    step="any"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full bg-transparent text-white text-sm font-bold focus:outline-none font-mono"
@@ -260,12 +332,12 @@ export default function WithdrawalPage() {
                 </div>
               </div>
 
-              {/* Choose amount or enter self */}
+              {/* Quick Amount Presets */}
               <div className="pt-2">
                 <span className="text-xs font-bold text-slate-300 block mb-3 uppercase tracking-wider">
                   Quick Amount Presets
                 </span>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                   {presets.map((val) => {
                     const isSelected = parsedAmount === parseFloat(val);
                     return (
@@ -273,7 +345,7 @@ export default function WithdrawalPage() {
                         key={val}
                         type="button"
                         onClick={() => handlePresetClick(val)}
-                        className={`py-2.5 px-4 rounded-xl text-xs font-mono font-bold transition text-center ${
+                        className={`py-2 px-3 rounded-xl text-xs font-mono font-bold transition text-center ${
                           isSelected
                             ? 'bg-[#FFCC00] text-slate-950 font-black shadow-md'
                             : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
@@ -299,16 +371,7 @@ export default function WithdrawalPage() {
                   </span>
                 </div>
 
-                <div className="flex justify-between items-start text-slate-300 pt-3">
-                  <div>
-                    <span>Handling Fee</span>
-                    <span className="block text-[10px] text-slate-500">(5.00% rate)</span>
-                  </div>
-                  <span className="font-mono text-slate-400 font-semibold">
-                    -${handlingFee.toFixed(2)}
-                  </span>
-                </div>
-
+                {/* Requirement 13: Handling fee removed! Receiving amount = Withdrawal amount */}
                 <div className="flex justify-between items-center pt-3">
                   <span className="text-slate-300 font-bold">Receiving Amount</span>
                   <span className="font-mono text-[#FFCC00] font-black text-lg drop-shadow-[0_0_8px_rgba(255,204,0,0.3)]">
@@ -318,7 +381,7 @@ export default function WithdrawalPage() {
 
                 <div className="pt-3 flex justify-between items-center text-slate-300">
                   <span>TRANSFER TO</span>
-                  <span className="font-bold text-white uppercase">{channel}</span>
+                  <span className="font-bold text-white uppercase">{activeMethodObj.name}</span>
                 </div>
               </div>
 
@@ -344,9 +407,9 @@ export default function WithdrawalPage() {
         </main>
       </div>
 
-      {/* Success / Confirmation Modal */}
+      {/* Success / Confirmation Modal (Requirement 11) */}
       {successData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-[#101117] rounded-3xl p-6 sm:p-7 shadow-2xl border border-[#FFCC00]/30 text-center">
             <div className="w-14 h-14 rounded-full bg-[#FFCC00]/15 text-[#FFCC00] mx-auto flex items-center justify-center mb-4">
               <CheckCircle2 className="w-8 h-8" />
@@ -355,7 +418,16 @@ export default function WithdrawalPage() {
             <h3 className="text-lg font-black text-white uppercase tracking-wide">
               Withdrawal Submitted!
             </h3>
-            <p className="text-xs text-slate-400 mt-1">
+
+            {/* Requirement 11 exact text */}
+            <div className="mt-3 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-left">
+              <p className="text-xs text-amber-300 font-bold leading-relaxed">
+                Management will verify the withdraw and if eligible it will be processed.
+              </p>
+            </div>
+
+            {/* Existing lines retained */}
+            <p className="text-xs text-slate-400 mt-2.5">
               Your cashout order has been placed into the priority dispatch queue.
             </p>
 
@@ -371,14 +443,6 @@ export default function WithdrawalPage() {
               <div className="flex justify-between">
                 <span className="text-slate-400">Recipient Account:</span>
                 <span className="text-white font-mono font-medium">{successData.paymentInfo}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Amount:</span>
-                <span className="text-white font-mono font-semibold">${successData.amount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Handling Fee (5.00%):</span>
-                <span className="text-slate-500 font-mono">-${successData.handlingFee.toFixed(2)}</span>
               </div>
               <div className="pt-2 border-t border-white/10 flex justify-between">
                 <span className="text-white font-bold">Receiving Amount:</span>

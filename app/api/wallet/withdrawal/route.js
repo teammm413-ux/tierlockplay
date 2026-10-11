@@ -24,12 +24,12 @@ export async function POST(request) {
     const { paymentMethod, paymentInfo, amount } = body;
 
     const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount < 20) {
-      return NextResponse.json({ success: false, message: 'Minimum withdrawal amount is $20.00' }, { status: 400 });
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return NextResponse.json({ success: false, message: 'Please enter a valid withdrawal amount' }, { status: 400 });
     }
 
     if (!paymentInfo || paymentInfo.trim().length === 0) {
-      return NextResponse.json({ success: false, message: 'Payout account details (e.g. $Cashtag) are required' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Payout account details (e.g. account tag, email or phone) are required' }, { status: 400 });
     }
 
     const user = await User.findById(session.id);
@@ -44,9 +44,9 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // 5.00% standard processing fee
-    const serviceFee = parseFloat((parsedAmount * 0.05).toFixed(2));
-    const receivedAmount = parseFloat((parsedAmount - serviceFee).toFixed(2));
+    // Zero handling fee as per requirements
+    const serviceFee = 0.00;
+    const receivedAmount = parsedAmount;
     const balanceBefore = user.wallet_balance;
     const balanceAfter = parseFloat((balanceBefore - parsedAmount).toFixed(2));
 
@@ -74,7 +74,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Withdrawal request submitted! Payout will be sent after review.',
+      message: 'Management will verify the withdraw and if eligible it will be processed.',
       orderNo: withdrawal.order_no,
       amount: parsedAmount,
       serviceFee,
