@@ -14,7 +14,10 @@ import {
   Dice5,
   Settings,
   ChevronRight,
-  X
+  X,
+  CirclePlus,
+  CircleMinus,
+  Receipt
 } from 'lucide-react';
 
 export default function Sidebar({ user }) {
@@ -50,6 +53,39 @@ export default function Sidebar({ user }) {
     { label: 'Game Deposit Records', href: '/player/game-platforms/deposit-records', icon: Boxes },
     { label: 'Game Withdrawal Records', href: '/player/game-platforms/withdrawal-records', icon: Dice5 },
     { label: 'Settings', href: '/player/settings', icon: Settings },
+  ];
+
+  const mobileBottomNavItems = [
+    {
+      label: 'Home',
+      href: '/player/dashboard',
+      icon: Home,
+      isActive: (path) => path === '/player/dashboard' || path === '/player'
+    },
+    {
+      label: 'Deposit',
+      href: '/player/wallet/deposit',
+      icon: CirclePlus,
+      isActive: (path) => path.startsWith('/player/wallet/deposit') && !path.includes('records')
+    },
+    {
+      label: 'Withdrawal',
+      href: '/player/wallet/withdrawal',
+      icon: CircleMinus,
+      isActive: (path) => path.startsWith('/player/wallet/withdrawal') && !path.includes('records')
+    },
+    {
+      label: 'Transactions',
+      href: '/player/wallet/deposit-records',
+      icon: Receipt,
+      isActive: (path) => path.includes('records')
+    },
+    {
+      label: 'Settings',
+      href: '/player/settings',
+      icon: Settings,
+      isActive: (path) => path.startsWith('/player/settings')
+    },
   ];
 
   return (
@@ -190,6 +226,39 @@ export default function Sidebar({ user }) {
           </aside>
         </div>
       )}
+
+      {/* 3. Mobile Bottom Navigation Bar (< lg screens as per sample site) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-[#0c0d14]/95 backdrop-blur-xl border-t border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.7)] select-none">
+        <div className="grid grid-cols-5 h-16 max-w-lg mx-auto px-1 items-center">
+          {mobileBottomNavItems.map((item) => {
+            const Icon = item.icon;
+            const active = item.isActive(pathname);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex flex-col items-center justify-center py-1 transition-all group relative ${
+                  active ? 'text-[#FFCC00]' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {active && (
+                  <span className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-8 h-[2px] bg-[#FFCC00] rounded-full shadow-[0_0_10px_#FFCC00]"></span>
+                )}
+                <div
+                  className={`p-1 rounded-xl transition transform ${
+                    active ? 'bg-[#FFCC00]/15 scale-110' : 'group-hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${active ? 'text-[#FFCC00]' : 'text-slate-400 group-hover:text-white'}`} />
+                </div>
+                <span className={`text-[10px] font-bold tracking-tight mt-0.5 ${active ? 'text-[#FFCC00] font-black' : 'text-slate-400'}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 }

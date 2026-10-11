@@ -98,11 +98,11 @@ export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLo
         {/* WhatsApp Chat Desk Trigger */}
         <button
           onClick={handleOpenChat}
-          className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25d366]/15 text-[#25d366] hover:bg-[#25d366]/25 border border-[#25d366]/40 text-xs font-bold transition shadow-xs"
+          className="relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#25d366]/15 text-[#25d366] hover:bg-[#25d366]/25 border border-[#25d366]/40 text-xs font-bold transition shadow-xs"
           title="WhatsApp Live Support"
         >
           <MessageCircle className="w-3.5 h-3.5" />
-          <span>Support</span>
+          <span className="hidden sm:inline">Support</span>
           {unreadChatCount > 0 && (
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
           )}

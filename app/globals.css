@@ -382,3 +382,11 @@ tr:hover td {
   text-align: right;
   margin-top: 4px;
 }
+
+/* Mobile Safe Bottom Spacing for Fixed Bottom Nav Bar (< lg screens) */
+@media (max-width: 1023px) {
+  main {
+    padding-bottom: 5.5rem !important;
+  }
+}
+
