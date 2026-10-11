@@ -1,114 +1,160 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Bell, Check, X, ShieldAlert } from 'lucide-react';
+import { Bell, Check, X, Sparkles, ShieldCheck } from 'lucide-react';
 
 export default function ChromeNotificationPrompt() {
   const [permission, setPermission] = useState('default');
   const [showBanner, setShowBanner] = useState(false);
-  const [lastCheckTime, setLastCheckTime] = useState(Date.now());
+  const [isSupported, setIsSupported] = useState(false);
+  const [isEnabling, setIsEnabling] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
+      setIsSupported(true);
       setPermission(Notification.permission);
+
       if (Notification.permission === 'default') {
-        const dismissed = localStorage.getItem('vv_notif_dismissed');
+        const dismissed = sessionStorage.getItem('trp_push_prompt_dismissed');
         if (!dismissed) {
-          setShowBanner(true);
+          // Delay by 1.5 seconds so user sees dashboard first
+          const timer = setTimeout(() => setShowBanner(true), 1500);
+          return () => clearTimeout(timer);
         }
       }
     }
   }, []);
 
   const requestPermission = async () => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      try {
-        const res = await Notification.requestPermission();
-        setPermission(res);
-        setShowBanner(false);
-        if (res === 'granted') {
-          new Notification('TierlockPlay Notifications Enabled! 🎰', {
-            body: 'You will now receive instant alerts for bonuses, deposits & payout updates.',
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setStatusMessage('Notifications are not supported in this browser.');
+      return;
+    }
+
+    setIsEnabling(true);
+    setStatusMessage('');
+
+    try {
+      const res = await Notification.requestPermission();
+      setPermission(res);
+
+      if (res === 'granted') {
+        setStatusMessage('Notifications Enabled! 🎉');
+        try {
+          new Notification('TierlockPlay Alerts Activated! 🎰', {
+            body: 'You will now receive instant alerts for deposits, cashouts & game credentials.',
             icon: '/favicon.ico',
           });
-        }
-      } catch (err) {
-        console.error('Notification error:', err);
+        } catch (e) {}
+
+        setTimeout(() => setShowBanner(false), 1500);
+      } else if (res === 'denied') {
+        setStatusMessage('Blocked in browser settings. Please click the site icon in address bar to allow.');
       }
+    } catch (err) {
+      console.error('Notification permission error:', err);
+      setStatusMessage('Error requesting notification permission.');
+    } finally {
+      setIsEnabling(false);
     }
   };
 
-  // Poll for new notifications
+  const handleDismiss = () => {
+    setShowBanner(false);
+    sessionStorage.setItem('trp_push_prompt_dismissed', '1');
+  };
+
+  // Poll for backend notifications if permission granted
   useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window) || permission !== 'granted') {
+      return;
+    }
+
     const checkNotifications = async () => {
       try {
         const res = await fetch('/api/notifications/chrome');
         const data = await res.json();
         if (data.success && data.notifications && data.notifications.length > 0) {
           const unread = data.notifications.filter((n) => !n.is_read);
-          if (unread.length > 0 && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (unread.length > 0) {
             const latest = unread[0];
-            new Notification(latest.title, {
-              body: latest.message,
-              icon: '/favicon.ico',
-            });
-            // Mark read
+            try {
+              new Notification(latest.title, {
+                body: latest.message,
+                icon: '/favicon.ico',
+              });
+            } catch (e) {}
+
             fetch('/api/notifications/chrome', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id: latest.id }),
-            });
+            }).catch(() => {});
           }
         }
-      } catch (err) {
-        // ignore
-      }
+      } catch (err) {}
     };
 
-    const interval = setInterval(checkNotifications, 15000);
+    const interval = setInterval(checkNotifications, 12000);
     return () => clearInterval(interval);
-  }, []);
+  }, [permission]);
 
-  if (!showBanner) return null;
+  if (!showBanner || !isSupported) return null;
 
   return (
-    <div className="fixed bottom-20 left-6 z-40 max-w-sm bg-[#131b26] border border-amber-500/40 rounded-xl p-3.5 shadow-2xl animate-in slide-in-from-bottom duration-300">
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-          <Bell className="w-4 h-4" />
+    <div className="fixed bottom-24 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 bg-[#101117] border border-[#FFCC00]/40 rounded-2xl p-4 sm:p-5 shadow-[0_10px_40px_rgba(0,0,0,0.8),0_0_25px_rgba(255,204,0,0.15)] animate-in slide-in-from-bottom duration-300">
+      <div className="flex items-start gap-3.5">
+        <div className="w-10 h-10 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center shrink-0 border border-[#FFCC00]/30 shadow-sm">
+          <Bell className="w-5 h-5 animate-bounce" />
         </div>
-        <div className="flex-1">
-          <div className="text-xs font-bold text-white flex items-center gap-1.5">
-            <span>Enable Chrome Notifications</span>
-            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-semibold">VIP</span>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
+                Enable Push Notifications
+              </span>
+              <span className="text-[9px] bg-[#FFCC00] text-slate-950 font-black px-1.5 py-0.2 rounded-md tracking-wider">
+                VIP
+              </span>
+            </div>
+            <button
+              onClick={handleDismiss}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <p className="text-[11px] text-gray-400 mt-1 leading-snug">
-            Get instant Chrome alerts when payouts clear or exclusive deposit promo codes drop!
+
+          <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+            Get instant real-time browser alerts when deposits clear, cashouts are dispatched, or exclusive freeplay bonuses drop!
           </p>
-          <div className="flex items-center gap-2 mt-2.5">
+
+          {statusMessage && (
+            <p className="text-[11px] font-semibold text-[#FFCC00] mt-2 bg-[#FFCC00]/10 border border-[#FFCC00]/20 rounded-lg p-2">
+              {statusMessage}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2.5 mt-3.5">
             <button
               onClick={requestPermission}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 text-black text-[11px] font-bold px-3 py-1 rounded-md hover:brightness-110 transition shadow-sm"
+              disabled={isEnabling}
+              className="flex-1 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs py-2 px-3.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-yellow-500/20 uppercase tracking-wide"
             >
-              Allow Alerts
+              <Bell className="w-3.5 h-3.5" />
+              <span>{isEnabling ? 'Enabling...' : 'Turn On Alerts'}</span>
             </button>
             <button
-              onClick={() => {
-                setShowBanner(false);
-                localStorage.setItem('vv_notif_dismissed', '1');
-              }}
-              className="text-gray-400 hover:text-white text-[11px] px-2 py-1"
+              onClick={handleDismiss}
+              className="px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white transition rounded-xl hover:bg-white/5"
             >
               Later
             </button>
           </div>
         </div>
-        <button
-          onClick={() => setShowBanner(false)}
-          className="text-gray-500 hover:text-gray-300 p-0.5"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
       </div>
     </div>
   );

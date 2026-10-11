@@ -39,6 +39,7 @@ export async function GET(request) {
         pendingRequestsByPlatform[tx.platform_name] = {
           order_no: tx.order_no,
           amount: tx.amount,
+          type: tx.type || 'Deposit',
           created_at: tx.created_at,
         };
       }
@@ -74,8 +75,9 @@ export async function GET(request) {
         game_username: account?.game_username || null,
         game_password: account?.game_password || null,
         total_loaded: account?.total_loaded || 0,
-        // Pending Load Request
+        // Pending Load / Register Request
         hasPendingRequest: !!pending,
+        pendingType: pending?.type || 'Deposit',
         pendingAmount: pending?.amount || null,
         pendingOrderNo: pending?.order_no || null,
       };

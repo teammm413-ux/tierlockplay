@@ -1,30 +1,48 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import PlayerHeader from '@/components/PlayerHeader';
 import WhatsAppChat from '@/components/WhatsAppChat';
-import FreeplayModal from '@/components/FreeplayModal';
 import PromotionalModal from '@/components/PromotionalModal';
+import ChromeNotificationPrompt from '@/components/ChromeNotificationPrompt';
 import {
   Wallet,
   User as UserIcon,
   CheckCircle2,
   Gamepad2,
-  Gift,
   Languages,
   Share2,
   Copy,
-  Check
+  Check,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  Download,
+  AlertCircle,
+  Loader2,
+  X,
+  ExternalLink,
+  ChevronRight
 } from 'lucide-react';
 
 export default function PlayerDashboard() {
   const [user, setUser] = useState(null);
-  const [platformCount, setPlatformCount] = useState(12);
+  const [platforms, setPlatforms] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isFreeplayOpen, setIsFreeplayOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [referralUrl, setReferralUrl] = useState('');
+
+  // Credentials visibility & copy states
+  const [showPasswords, setShowPasswords] = useState({});
+  const [copiedItem, setCopiedItem] = useState(null);
+
+  // Quick Load Credits modal right from dashboard (Requirement 17)
+  const [loadModalPlatform, setLoadModalPlatform] = useState(null);
+  const [amountInput, setAmountInput] = useState('20');
+  const [isSubmittingLoad, setIsSubmittingLoad] = useState(false);
+  const [loadNotice, setLoadNotice] = useState({ text: '', isError: false });
 
   const refreshUserData = async () => {
     try {
@@ -36,17 +54,21 @@ export default function PlayerDashboard() {
     } catch (err) {}
   };
 
+  const loadPlatformsData = async () => {
+    try {
+      const res = await fetch('/api/games/platforms');
+      const data = await res.json();
+      if (data.success && data.platforms) {
+        setPlatforms(data.platforms);
+      }
+    } catch (err) {}
+  };
+
   useEffect(() => {
     refreshUserData();
-
-    fetch('/api/games/platforms')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success && d.platforms) {
-          setPlatformCount(d.platforms.length);
-        }
-      })
-      .catch(() => {});
+    loadPlatformsData();
+    const interval = setInterval(loadPlatformsData, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const balance = Number(user?.wallet_balance || 0).toFixed(2);
@@ -72,6 +94,75 @@ export default function PlayerDashboard() {
     }
   };
 
+  const copyToClipboard = (text, key) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedItem(key);
+      setTimeout(() => setCopiedItem(null), 2000);
+    }
+  };
+
+  const togglePasswordVisibility = (platformId) => {
+    setShowPasswords((prev) => ({ ...prev, [platformId]: !prev[platformId] }));
+  };
+
+  const handleOpenLoadModal = (platform) => {
+    setLoadModalPlatform(platform);
+    setAmountInput('20');
+    setLoadNotice({ text: '', isError: false });
+  };
+
+  const handleCloseLoadModal = () => {
+    setLoadModalPlatform(null);
+    setLoadNotice({ text: '', isError: false });
+  };
+
+  const handleDepositSubmit = async (e) => {
+    e.preventDefault();
+    const amt = parseFloat(amountInput);
+    if (!amt || amt <= 0) {
+      setLoadNotice({ text: 'Enter a valid transfer amount', isError: true });
+      return;
+    }
+
+    if (!user || user.wallet_balance < amt) {
+      setLoadNotice({
+        text: `Insufficient wallet balance ($${Number(user?.wallet_balance || 0).toFixed(2)}). Please deposit to wallet first.`,
+        isError: true,
+      });
+      return;
+    }
+
+    setIsSubmittingLoad(true);
+    setLoadNotice({ text: '', isError: false });
+
+    try {
+      const res = await fetch('/api/games/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platformName: loadModalPlatform.name,
+          amount: amt,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLoadNotice({ text: data.message, isError: false });
+        refreshUserData();
+        loadPlatformsData();
+        setTimeout(handleCloseLoadModal, 2000);
+      } else {
+        setLoadNotice({ text: data.message || 'Transfer failed', isError: true });
+      }
+    } catch (err) {
+      setLoadNotice({ text: 'Connection error submitting load request', isError: true });
+    } finally {
+      setIsSubmittingLoad(false);
+    }
+  };
+
+  const activeAccounts = platforms.filter((p) => p.hasAccount);
+
   return (
     <div className="min-h-screen bg-[#07080b] text-slate-100 flex">
       {/* Left Sidebar */}
@@ -87,7 +178,7 @@ export default function PlayerDashboard() {
         />
 
         {/* Content Area */}
-        <main className="flex-1 p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-6">
+        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
           {/* Welcome Card */}
           <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 shadow-sm border border-white/10">
             <h1 className="text-xl sm:text-2xl font-black text-white mb-6 uppercase tracking-tight">
@@ -152,18 +243,168 @@ export default function PlayerDashboard() {
               </div>
             </div>
 
-            {/* Card 4: Platforms */}
+            {/* Card 4: Active Game Accounts */}
             <div className="bg-[#101117] rounded-3xl p-6 border border-white/10 hover:border-[#FFCC00]/40 transition">
               <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
                 <span className="w-6 h-6 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
                   <Gamepad2 className="w-3.5 h-3.5" />
                 </span>
-                <span>Platforms</span>
+                <span>Active Game Accounts</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-white mt-3 font-mono">
-                {platformCount}
+              <div className="text-2xl sm:text-3xl font-black text-white mt-3 font-mono flex items-baseline gap-2">
+                <span>{activeAccounts.length}</span>
+                <span className="text-xs text-slate-400 font-normal">/ {platforms.length || 12} Total</span>
               </div>
             </div>
+          </div>
+
+          {/* REQUIREMENT 17: MY CREATED GAME ACCOUNTS & CREDENTIALS ON DASHBOARD */}
+          <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/30 shadow-[0_0_40px_rgba(255,204,0,0.06)] space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center shrink-0 border border-[#FFCC00]/30">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-wide">
+                    My Game Accounts &amp; Credentials
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Your approved sweepstakes game logins. Load credits directly or download the game apps.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/player/game-platforms"
+                className="text-xs font-bold text-slate-950 bg-[#FFCC00] hover:bg-yellow-300 px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto shadow-sm"
+              >
+                <span>Browse All Platforms</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {activeAccounts.length === 0 ? (
+              <div className="bg-[#181922] border border-white/5 rounded-2xl p-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 text-slate-400 mx-auto flex items-center justify-center">
+                  <Gamepad2 className="w-6 h-6 text-[#FFCC00]" />
+                </div>
+                <h3 className="text-sm font-bold text-white uppercase">
+                  No Game Accounts Registered Yet
+                </h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Request in-game accounts for popular sweepstakes platforms like Juwa, Fire Kirin, Game Vault &amp; Orion Stars. Once created by admin, your credentials and direct load buttons will appear right here.
+                </p>
+                <div className="pt-2">
+                  <Link
+                    href="/player/game-platforms"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-md"
+                  >
+                    <span>Create Your First Game Account</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {activeAccounts.map((p) => {
+                  const isVisible = showPasswords[p.id];
+                  return (
+                    <div
+                      key={p.id}
+                      className="bg-[#181922] border border-white/10 hover:border-[#FFCC00]/40 rounded-2xl p-5 space-y-4 transition-all shadow-sm"
+                    >
+                      {/* Platform Header */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-black border border-white/10 overflow-hidden shrink-0">
+                          <img
+                            src={p.logo_url}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.target.src = '/images/games/juwa.jpg'; }}
+                          />
+                        </div>
+                        <div className="overflow-hidden flex-1">
+                          <h3 className="font-bold text-white text-base truncate">{p.name}</h3>
+                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                            Account Ready
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Credentials Box */}
+                      <div className="bg-[#0e0f15] border border-white/5 rounded-xl p-3.5 space-y-2.5 text-xs">
+                        {/* Username */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400 text-[11px]">Username:</span>
+                          <div className="flex items-center gap-1.5 font-mono font-bold text-[#FFCC00]">
+                            <span>{p.game_username}</span>
+                            <button
+                              onClick={() => copyToClipboard(p.game_username, `${p.id}-user`)}
+                              className="text-slate-400 hover:text-white p-1 rounded-md transition"
+                              title="Copy Username"
+                            >
+                              {copiedItem === `${p.id}-user` ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Password */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400 text-[11px]">Password:</span>
+                          <div className="flex items-center gap-1.5 font-mono font-bold text-slate-200">
+                            <span>{isVisible ? p.game_password : '••••••••'}</span>
+                            <button
+                              onClick={() => togglePasswordVisibility(p.id)}
+                              className="text-slate-400 hover:text-white p-1 rounded-md transition"
+                              title={isVisible ? 'Hide Password' : 'Show Password'}
+                            >
+                              {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(p.game_password, `${p.id}-pass`)}
+                              className="text-slate-400 hover:text-white p-1 rounded-md transition"
+                              title="Copy Password"
+                            >
+                              {copiedItem === `${p.id}-pass` ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Requirement 17: Load credits button inside the account card + Download App */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleOpenLoadModal(p)}
+                          className="flex-1 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-98 uppercase tracking-wide"
+                        >
+                          <Wallet className="w-3.5 h-3.5" />
+                          <span>Load Credits</span>
+                        </button>
+                        <a
+                          href={p.download_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition flex items-center gap-1.5 text-xs font-bold shrink-0 border border-white/10 hover:border-white/30"
+                          title="Download App"
+                        >
+                          <Download className="w-3.5 h-3.5 text-[#FFCC00]" />
+                          <span>App</span>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* VIP Referral & Invite Program Card */}
@@ -175,7 +416,7 @@ export default function PlayerDashboard() {
                     <Share2 className="w-4 h-4" />
                   </span>
                   <h2 className="text-base sm:text-lg font-bold text-white">
-                    Your VIP Referral & Invite Link
+                    Your VIP Referral &amp; Invite Link
                   </h2>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
@@ -221,6 +462,119 @@ export default function PlayerDashboard() {
         </main>
       </div>
 
+      {/* QUICK LOAD CREDITS MODAL FROM DASHBOARD */}
+      {loadModalPlatform && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#101117] border border-[#FFCC00]/30 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center">
+                  <Gamepad2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">
+                    Load {loadModalPlatform.name} Credits
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Instant transfer from your Tierlock wallet
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseLoadModal}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {loadNotice.text && (
+              <div
+                className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                  loadNotice.isError
+                    ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+                    : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                }`}
+              >
+                {loadNotice.isError ? (
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                )}
+                <span>{loadNotice.text}</span>
+              </div>
+            )}
+
+            <div className="bg-[#181922] p-4 rounded-2xl border border-white/5 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Available Balance:</span>
+                <span className="font-mono font-bold text-[#FFCC00]">
+                  ${Number(user?.wallet_balance || 0).toFixed(2)} USD
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">In-Game Username:</span>
+                <span className="font-mono font-bold text-white">
+                  {loadModalPlatform.game_username || 'Active Account'}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleDepositSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Select Load Amount (USD)
+                </label>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {['10', '20', '50', '100'].map((preset) => (
+                    <button
+                      type="button"
+                      key={preset}
+                      onClick={() => setAmountInput(preset)}
+                      className={`py-2 text-xs font-bold rounded-xl border transition ${
+                        amountInput === preset
+                          ? 'bg-[#FFCC00] text-slate-950 border-[#FFCC00]'
+                          : 'bg-[#181922] text-slate-300 border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      ${preset}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(e.target.value)}
+                    placeholder="Enter custom amount"
+                    className="w-full bg-[#181922] border border-white/10 text-white font-mono font-bold text-sm pl-8 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-[#FFCC00]"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingLoad || !amountInput || parseFloat(amountInput) <= 0}
+                className="w-full py-3.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 disabled:opacity-50"
+              >
+                {isSubmittingLoad ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Submitting Load Request...</span>
+                  </>
+                ) : (
+                  <span>Submit Game Load Request (${amountInput || '0'})</span>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Floating Translation Widget on Right Edge */}
       <div className="fixed right-2 top-1/2 -translate-y-1/2 z-30">
@@ -239,13 +593,8 @@ export default function PlayerDashboard() {
         user={user}
       />
 
-      {/* Freeplay Bonus Claim Modal */}
-      <FreeplayModal
-        isOpen={isFreeplayOpen}
-        onClose={() => setIsFreeplayOpen(false)}
-        user={user}
-        onClaimed={refreshUserData}
-      />
+      {/* Chrome Push Notification Prompt (Requirement 21) */}
+      <ChromeNotificationPrompt />
 
       {/* Admin Dispatched VIP Promotional Popup Modal */}
       <PromotionalModal />

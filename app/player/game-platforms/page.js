@@ -5,8 +5,8 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import PlayerHeader from '@/components/PlayerHeader';
 import WhatsAppChat from '@/components/WhatsAppChat';
-import FreeplayModal from '@/components/FreeplayModal';
 import PromotionalModal from '@/components/PromotionalModal';
+import ChromeNotificationPrompt from '@/components/ChromeNotificationPrompt';
 import {
   ExternalLink,
   X,
@@ -24,7 +24,8 @@ import {
   ShieldCheck,
   Download,
   Wallet,
-  Loader2
+  Loader2,
+  UserPlus
 } from 'lucide-react';
 
 export default function GamePlatformsPage() {
@@ -32,12 +33,11 @@ export default function GamePlatformsPage() {
   const [platforms, setPlatforms] = useState([]);
   const [activePendingRequest, setActivePendingRequest] = useState(null);
   const [hasAnyPending, setHasAnyPending] = useState(false);
-  const [activeModal, setActiveModal] = useState(null); // { type: 'deposit', platform: obj }
+  const [activeModal, setActiveModal] = useState(null); // { type: 'deposit' | 'createAccount', platform: obj }
   const [amountInput, setAmountInput] = useState('20');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalNotice, setModalNotice] = useState({ text: '', isError: false });
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isFreeplayOpen, setIsFreeplayOpen] = useState(false);
   const [showPasswords, setShowPasswords] = useState({});
   const [copiedItem, setCopiedItem] = useState(null);
 
@@ -64,18 +64,17 @@ export default function GamePlatformsPage() {
   useEffect(() => {
     refreshUserData();
     loadPlatforms();
-    // Fast real-time polling so user unlocks immediately when admin approves/rejects
     const interval = setInterval(loadPlatforms, 3500);
     return () => clearInterval(interval);
   }, []);
 
   const openDepositModal = (platform) => {
     if (platform.hasPendingRequest) {
-      alert(`Your request for ${platform.name} (Order #${platform.pendingOrderNo}) is currently under review. You cannot submit another request until this request is approved or rejected by the admin.`);
+      alert(`Your request for ${platform.name} (Order #${platform.pendingOrderNo}) is currently under review.`);
       return;
     }
     if (hasAnyPending) {
-      alert(`Your request (${activePendingRequest?.platform_name} - $${Number(activePendingRequest?.amount).toFixed(2)}) is currently under review. You cannot submit another request until this request is approved or rejected by the admin.`);
+      alert(`Your request (${activePendingRequest?.platform_name} - ${activePendingRequest?.type || 'Deposit'}) is currently under review. You cannot submit another request until this request is approved or rejected by the admin.`);
       return;
     }
     setActiveModal({ type: 'deposit', platform });
@@ -83,9 +82,53 @@ export default function GamePlatformsPage() {
     setModalNotice({ text: '', isError: false });
   };
 
+  const openCreateAccountModal = (platform) => {
+    if (platform.hasPendingRequest) {
+      alert(`Your registration request for ${platform.name} is currently under review.`);
+      return;
+    }
+    if (hasAnyPending) {
+      alert(`Your request (${activePendingRequest?.platform_name} - ${activePendingRequest?.type || 'Request'}) is currently under review. You cannot submit another request until it is processed.`);
+      return;
+    }
+    setActiveModal({ type: 'createAccount', platform });
+    setModalNotice({ text: '', isError: false });
+  };
+
   const closeModal = () => {
     setActiveModal(null);
     setModalNotice({ text: '', isError: false });
+  };
+
+  // Requirement 19: Submit account creation request
+  const handleCreateAccountSubmit = async (e) => {
+    e.preventDefault();
+    if (!activeModal || !activeModal.platform) return;
+
+    setIsSubmitting(true);
+    setModalNotice({ text: '', isError: false });
+
+    try {
+      const res = await fetch('/api/games/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platformName: activeModal.platform.name,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setModalNotice({ text: data.message, isError: false });
+        loadPlatforms();
+        setTimeout(closeModal, 2200);
+      } else {
+        setModalNotice({ text: data.message || 'Account creation request failed', isError: true });
+      }
+    } catch (err) {
+      setModalNotice({ text: 'Connection error submitting account creation request', isError: true });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDepositSubmit = async (e) => {
@@ -194,11 +237,11 @@ export default function GamePlatformsPage() {
                   <div className="font-black text-sm text-white flex items-center gap-2">
                     <span>Active Request In Review: {activePendingRequest.platform_name}</span>
                     <span className="bg-[#FFCC00] text-slate-950 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
-                      Pending Approval
+                      {activePendingRequest.type === 'Register' ? 'Account Creation Pending' : 'Deposit Pending'}
                     </span>
                   </div>
                   <p className="text-amber-200/90 mt-1 leading-relaxed text-[11px]">
-                    Order <strong>#{activePendingRequest.order_no}</strong> (${Number(activePendingRequest.amount).toFixed(2)}) is awaiting Admin review. You cannot submit another request until this request has been approved or rejected.
+                    Order <strong>#{activePendingRequest.order_no}</strong> {activePendingRequest.amount > 0 ? `($${Number(activePendingRequest.amount).toFixed(2)})` : ''} is awaiting Admin processing. You cannot submit another request until this request has been processed.
                   </p>
                 </div>
               </div>
@@ -371,11 +414,12 @@ export default function GamePlatformsPage() {
                       ) : p.hasPendingRequest ? (
                         <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Clock className="w-3 h-3 animate-spin" />
-                          <span>Load Pending</span>
+                          <span>{p.pendingType === 'Register' ? 'Registration Pending' : 'Load Pending'}</span>
                         </span>
                       ) : (
+                        /* Requirement 18: Ready to Register */
                         <span className="text-[10px] font-bold text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
-                          Ready to Load
+                          Ready to Register
                         </span>
                       )}
                     </div>
@@ -392,7 +436,7 @@ export default function GamePlatformsPage() {
                       target="_blank"
                       rel="noreferrer"
                       className="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition flex items-center gap-1"
-                      title="Download APK / Web Play"
+                      title="Download App"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>App</span>
@@ -404,24 +448,34 @@ export default function GamePlatformsPage() {
                         className="flex-1 py-2.5 bg-amber-500/20 text-amber-300 border border-amber-500/35 font-bold text-xs uppercase tracking-wide rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed opacity-90 shadow-sm"
                       >
                         <Clock className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                        <span>In Review (${p.pendingAmount})</span>
+                        <span>In Review {p.pendingAmount > 0 ? `($${p.pendingAmount})` : ''}</span>
                       </button>
                     ) : hasAnyPending ? (
                       <button
-                        onClick={() => openDepositModal(p)}
+                        onClick={() => p.hasAccount ? openDepositModal(p) : openCreateAccountModal(p)}
                         className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 border border-white/10 font-bold text-xs uppercase tracking-wide rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
                         title="Another request is currently under review"
                       >
                         <Clock className="w-3.5 h-3.5 text-amber-400" />
                         <span>Queue Locked</span>
                       </button>
-                    ) : (
+                    ) : p.hasAccount ? (
+                      /* Requirement 19: When account created, show Load Credits */
                       <button
                         onClick={() => openDepositModal(p)}
                         className="flex-1 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wide rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
                       >
                         <Wallet className="w-3.5 h-3.5" />
-                        <span>{p.hasAccount ? 'Load Credits' : 'Create & Load'}</span>
+                        <span>Load Credits</span>
+                      </button>
+                    ) : (
+                      /* Requirement 16 & 19: When NO account, show Create Account Only */
+                      <button
+                        onClick={() => openCreateAccountModal(p)}
+                        className="flex-1 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wide rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Create Account</span>
                       </button>
                     )}
                   </div>
@@ -432,58 +486,40 @@ export default function GamePlatformsPage() {
         </main>
       </div>
 
-      {/* GAME DEPOSIT / LOAD MODAL */}
-      {activeModal && (
+      {/* CREATE ACCOUNT MODAL (Requirement 16, 19) */}
+      {activeModal && activeModal.type === 'createAccount' && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#101117] border border-[#FFCC00]/30 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center">
-                  <Gamepad2 className="w-5 h-5" />
+                  <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-black text-white uppercase tracking-tight">
-                    Load {activeModal.platform.name}
+                    Create {activeModal.platform.name} Account
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Wallet to Game Credit Transfer
+                    Official sweepstakes player registration
                   </p>
                 </div>
               </div>
               <button
                 onClick={closeModal}
-                className="text-slate-400 hover:text-white text-lg font-bold p-1"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* User Wallet Balance Snapshot */}
-            <div className="bg-[#181922] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between text-xs">
-              <span className="text-slate-400">Available Wallet Balance:</span>
-              <span className="font-mono font-black text-[#FFCC00] text-sm">
-                ${Number(user?.wallet_balance || 0).toFixed(2)} USD
-              </span>
-            </div>
-
-            {/* Informational Message */}
-            <div className="p-3 bg-[#FFCC00]/10 border border-[#FFCC00]/25 rounded-2xl text-[11px] text-[#FFCC00] leading-relaxed flex items-start gap-2">
-              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
-                {activeModal.platform.hasAccount ? (
-                  <span>Credits will be loaded to your active game account: <strong>{activeModal.platform.game_username}</strong> upon admin approval.</span>
-                ) : (
-                  <span>Admin will create your new official game account, configure your username &amp; password, and load your credits. Your credentials will appear directly on your dashboard.</span>
-                )}
-              </div>
-            </div>
-
             {modalNotice.text && (
-              <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2 ${
-                modalNotice.isError
-                  ? 'bg-red-950/40 border border-red-500/40 text-red-400'
-                  : 'bg-emerald-950/40 border border-emerald-500/40 text-emerald-400'
-              }`}>
+              <div
+                className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                  modalNotice.isError
+                    ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+                    : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                }`}
+              >
                 {modalNotice.isError ? (
                   <AlertCircle className="w-4 h-4 shrink-0" />
                 ) : (
@@ -493,78 +529,177 @@ export default function GamePlatformsPage() {
               </div>
             )}
 
-            <form onSubmit={handleDepositSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Select Load Amount (USD)
-                </label>
-                <div className="grid grid-cols-4 gap-2 mb-2">
-                  {['10', '20', '50', '100'].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setAmountInput(val)}
-                      className={`py-2 rounded-xl text-xs font-bold font-mono transition ${
-                        amountInput === val
-                          ? 'bg-[#FFCC00] text-slate-950 font-black shadow-sm'
-                          : 'bg-[#181922] text-slate-300 border border-white/10 hover:border-white/30'
-                      }`}
-                    >
-                      ${val}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    required
-                    value={amountInput}
-                    onChange={(e) => setAmountInput(e.target.value)}
-                    placeholder="Enter custom amount"
-                    className="w-full bg-[#181922] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#FFCC00] font-mono font-bold"
+            <div className="bg-[#181922] p-4 rounded-2xl border border-white/5 space-y-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-black border border-white/10 overflow-hidden shrink-0">
+                  <img
+                    src={activeModal.platform.logo_url}
+                    alt={activeModal.platform.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = '/images/games/juwa.jpg'; }}
                   />
                 </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm">{activeModal.platform.name}</h4>
+                  <p className="text-[11px] text-slate-400">
+                    {activeModal.platform.category || 'Fish & Slots'}
+                  </p>
+                </div>
               </div>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmitting || hasAnyPending || activeModal?.platform?.hasPendingRequest}
-                  className="w-full bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black py-3 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-yellow-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                      <span>Submitting Request...</span>
-                    </>
-                  ) : (hasAnyPending || activeModal?.platform?.hasPendingRequest) ? (
-                    <span>Request In Review (Queue Locked)</span>
-                  ) : (
-                    <span>Submit Game Load Request (${amountInput || '0'})</span>
-                  )}
-                </button>
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200/90 text-[11px] leading-relaxed">
+                Management will verify your registration and generate your official in-game username &amp; password. Once created, your credentials will appear directly on your dashboard, allowing you to load credits.
               </div>
+            </div>
+
+            <form onSubmit={handleCreateAccountSubmit} className="space-y-4">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Submitting Request...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    <span>Confirm &amp; Create Account</span>
+                  </>
+                )}
+              </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* WhatsApp Chat & Freeplay Modals */}
+      {/* GAME DEPOSIT / LOAD MODAL (Requirement 19: Available after account created) */}
+      {activeModal && activeModal.type === 'deposit' && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#101117] border border-[#FFCC00]/30 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center">
+                  <Gamepad2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">
+                    Load {activeModal.platform.name} Credits
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Instant transfer from your Tierlock wallet
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeModal}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {modalNotice.text && (
+              <div
+                className={`p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                  modalNotice.isError
+                    ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+                    : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                }`}
+              >
+                {modalNotice.isError ? (
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                )}
+                <span>{modalNotice.text}</span>
+              </div>
+            )}
+
+            <div className="bg-[#181922] p-4 rounded-2xl border border-white/5 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Available Wallet Balance:</span>
+                <span className="font-mono font-bold text-[#FFCC00]">
+                  ${Number(user?.wallet_balance || 0).toFixed(2)} USD
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">In-Game Username:</span>
+                <span className="font-mono font-bold text-white">
+                  {activeModal.platform.game_username || 'Active Account'}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleDepositSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Select Load Amount (USD)
+                </label>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {['10', '20', '50', '100'].map((preset) => (
+                    <button
+                      type="button"
+                      key={preset}
+                      onClick={() => setAmountInput(preset)}
+                      className={`py-2 text-xs font-bold rounded-xl border transition ${
+                        amountInput === preset
+                          ? 'bg-[#FFCC00] text-slate-950 border-[#FFCC00]'
+                          : 'bg-[#181922] text-slate-300 border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      ${preset}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(e.target.value)}
+                    placeholder="Enter custom amount"
+                    className="w-full bg-[#181922] border border-white/10 text-white font-mono font-bold text-sm pl-8 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-[#FFCC00]"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || !amountInput || parseFloat(amountInput) <= 0}
+                className="w-full py-3.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Submitting Load Request...</span>
+                  </>
+                ) : (
+                  <span>Submit Game Load Request (${amountInput || '0'})</span>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Chat Drawer */}
       <WhatsAppChat
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
         user={user}
       />
-      <FreeplayModal
-        isOpen={isFreeplayOpen}
-        onClose={() => setIsFreeplayOpen(false)}
-        user={user}
-        onClaimed={refreshUserData}
-      />
+
+      {/* Chrome Push Notification Prompt (Requirement 21) */}
+      <ChromeNotificationPrompt />
+
+      {/* Admin Dispatched VIP Promotional Popup Modal */}
       <PromotionalModal />
     </div>
   );

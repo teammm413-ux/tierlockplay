@@ -125,20 +125,23 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: 'User account not found' }, { status: 404 });
       }
 
-      // Check user still has sufficient balance to deduct
-      if (user.wallet_balance < tx.amount) {
+      // Check balance only if load amount > 0
+      const txAmount = Number(tx.amount || 0);
+      if (txAmount > 0 && user.wallet_balance < txAmount) {
         return NextResponse.json({
           success: false,
-          message: `User has insufficient balance ($${Number(user.wallet_balance).toFixed(2)}). Cannot deduct $${Number(tx.amount).toFixed(2)}.`,
+          message: `User has insufficient balance ($${Number(user.wallet_balance).toFixed(2)}). Cannot deduct $${txAmount.toFixed(2)}.`,
         }, { status: 400 });
       }
 
-      const balanceBefore = user.wallet_balance;
-      const balanceAfter = parseFloat((balanceBefore - tx.amount).toFixed(2));
+      const balanceBefore = user.wallet_balance || 0;
+      const balanceAfter = txAmount > 0 ? parseFloat((balanceBefore - txAmount).toFixed(2)) : balanceBefore;
 
-      // 1. Deduct balance from user wallet
-      user.wallet_balance = balanceAfter;
-      await user.save();
+      // 1. Deduct balance from user wallet if amount > 0
+      if (txAmount > 0) {
+        user.wallet_balance = balanceAfter;
+        await user.save();
+      }
 
       // 2. Update transaction
       tx.status = 'Approved';
