@@ -22,6 +22,8 @@ export default function AdminPromotionsPage() {
   const [formData, setFormData] = useState({
     title: 'Weekend 100% Reload Match Bonus! 🎰',
     message: 'Deposit $20 or more today and get an extra $10 freeplay added to any platform of your choice!',
+    promoCode: 'WEEKEND100',
+    bonusAmount: '10',
     targetAudience: 'both', // 'subscribers' | 'unsubscribers' | 'both'
     deliveryChannel: 'both', // 'chrome' | 'email' | 'both'
   });
@@ -197,6 +199,35 @@ export default function AdminPromotionsPage() {
                   placeholder="Describe the promotion or bonus running right now (e.g. Deposit $20 or more today and get an extra $10 freeplay added to any platform of your choice!)..."
                   className="w-full bg-[#181922] border border-white/10 text-white text-xs p-3.5 rounded-xl focus:outline-none focus:border-[#FFCC00] placeholder-slate-500 leading-relaxed transition"
                 />
+              </div>
+
+              {/* Promo Code & Bonus Amount */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-slate-300 font-bold uppercase tracking-wider block mb-1.5 text-[11px]">
+                    Promo Code (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.promoCode}
+                    onChange={(e) => setFormData({ ...formData, promoCode: e.target.value.toUpperCase() })}
+                    placeholder="e.g. RELOAD100 or VIP777"
+                    className="w-full bg-[#181922] border border-white/10 text-[#FFCC00] font-mono font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-[#FFCC00] placeholder-slate-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 font-bold uppercase tracking-wider block mb-1.5 text-[11px]">
+                    Free Bonus / Match Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={formData.bonusAmount}
+                    onChange={(e) => setFormData({ ...formData, bonusAmount: e.target.value })}
+                    placeholder="e.g. 10.00"
+                    className="w-full bg-[#181922] border border-white/10 text-white font-mono font-bold text-xs px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-[#FFCC00] placeholder-slate-500 transition"
+                  />
+                </div>
               </div>
 
               {/* 1. Target Audience Segmentation */}

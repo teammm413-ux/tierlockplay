@@ -24,7 +24,8 @@ import {
   Loader2,
   X,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 
 export default function PlayerDashboard() {
@@ -64,10 +65,20 @@ export default function PlayerDashboard() {
     } catch (err) {}
   };
 
+  const [activePromo, setActivePromo] = useState(null);
+
   useEffect(() => {
     refreshUserData();
     loadPlatformsData();
     const interval = setInterval(loadPlatformsData, 4000);
+
+    fetch('/api/promotions/latest')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.promo) setActivePromo(d.promo);
+      })
+      .catch(() => {});
+
     return () => clearInterval(interval);
   }, []);
 
@@ -449,8 +460,46 @@ export default function PlayerDashboard() {
             )}
           </div>
 
-          {/* VIP Referral & Invite Program Card - On Mobile: order-5, On Desktop: sm:order-4 */}
-          <div className="order-5 sm:order-4 bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/25 shadow-[0_0_30px_rgba(255,204,0,0.05)]">
+          {/* Active Promo Announcement Banner (if admin has published a promo) */}
+          {activePromo && (
+            <div className="order-5 sm:order-4 bg-gradient-to-r from-[#FFCC00]/15 via-[#181922] to-[#101117] border border-[#FFCC00]/40 rounded-3xl p-5 sm:p-6 shadow-[0_0_35px_rgba(255,204,0,0.08)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-[#FFCC00]/20 text-[#FFCC00] flex items-center justify-center shrink-0 border border-[#FFCC00]/30 shadow-[0_0_20px_rgba(255,204,0,0.2)]">
+                  <Sparkles className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Live Promotion
+                    </span>
+                    {activePromo.promoCode && (
+                      <span className="text-[11px] font-mono font-black text-[#FFCC00] bg-[#FFCC00]/15 px-2.5 py-0.5 rounded-lg border border-[#FFCC00]/30">
+                        Code: {activePromo.promoCode}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-base font-black text-white mt-1 leading-snug">
+                    {activePromo.title}
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-0.5 line-clamp-1">
+                    {activePromo.message}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/player/promotions"
+                className="px-5 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0 shadow-md"
+              >
+                <span>View Promotion</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
+
+          {/* VIP Referral & Invite Program Card - On Mobile: order-6, On Desktop: sm:order-5 */}
+          <div className="order-6 sm:order-5 bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/25 shadow-[0_0_30px_rgba(255,204,0,0.05)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <div className="flex items-center gap-2">

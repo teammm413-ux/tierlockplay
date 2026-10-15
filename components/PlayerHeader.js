@@ -14,7 +14,8 @@ import {
   X,
   ShieldCheck,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
 
 export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLoginToast = false }) {
@@ -98,6 +99,16 @@ export default function PlayerHeader({ user, onToggleSidebar, onOpenChat, showLo
             </button>
           </div>
         )}
+
+        {/* Live Promotions Tab Button */}
+        <Link
+          href="/player/promotions"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#FFCC00]/40 bg-[#FFCC00]/10 hover:bg-[#FFCC00]/20 text-[#FFCC00] text-xs font-bold transition shadow-xs"
+          title="Active Promotions & Bonuses"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[#FFCC00] animate-pulse shrink-0" />
+          <span>Promos</span>
+        </Link>
 
         {/* KYC Verification Button (Replaces Support button as requested) */}
         <Link

@@ -17,7 +17,8 @@ import {
   X,
   CirclePlus,
   CircleMinus,
-  Receipt
+  Receipt,
+  Sparkles
 } from 'lucide-react';
 
 export default function Sidebar({ user }) {
@@ -48,6 +49,7 @@ export default function Sidebar({ user }) {
     { label: 'Deposit', href: '/player/wallet/deposit', icon: CreditCard },
     { label: 'Withdrawal', href: '/player/wallet/withdrawal', icon: Banknote },
     { label: 'Game Platforms', href: '/player/game-platforms', icon: Gamepad2 },
+    { label: 'Promotions', href: '/player/promotions', icon: Sparkles, badge: 'HOT' },
     { label: 'Deposit Records', href: '/player/wallet/deposit-records', icon: FileText },
     { label: 'Withdrawal Records', href: '/player/wallet/withdrawal-records', icon: ArrowUpRight },
     { label: 'Game Deposit Records', href: '/player/game-platforms/deposit-records', icon: Boxes },
@@ -122,6 +124,11 @@ export default function Sidebar({ user }) {
                     <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-slate-400'}`} />
                     <span>{item.label}</span>
                   </div>
+                  {item.badge && !isActive && (
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FFCC00]/15 text-[#FFCC00] border border-[#FFCC00]/30 animate-pulse">
+                      {item.badge}
+                    </span>
+                  )}
                   {isActive && <ChevronRight className="w-3.5 h-3.5 text-slate-950" />}
                 </Link>
               );
@@ -198,6 +205,11 @@ export default function Sidebar({ user }) {
                         <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-slate-400'}`} />
                         <span>{item.label}</span>
                       </div>
+                      {item.badge && !isActive && (
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FFCC00]/15 text-[#FFCC00] border border-[#FFCC00]/30 animate-pulse">
+                          {item.badge}
+                        </span>
+                      )}
                       {isActive && <ChevronRight className="w-3.5 h-3.5 text-slate-950" />}
                     </Link>
                   );
