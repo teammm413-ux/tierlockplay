@@ -92,11 +92,11 @@ export default function Sidebar({ user }) {
 
   return (
     <>
-      {/* 1. Desktop Sidebar (Permanent on lg screens) */}
-      <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between bg-[#0a0b10] border-r border-white/10 min-h-screen text-slate-300 select-none">
-        <div>
+      {/* 1. Desktop Sidebar (Sticky full-height on lg screens) */}
+      <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between bg-[#0a0b10] border-r border-white/10 h-screen sticky top-0 text-slate-300 select-none z-20">
+        <div className="flex-1 overflow-y-auto">
           {/* Brand Header */}
-          <div className="p-4 border-b border-white/10 flex items-center">
+          <div className="p-4 border-b border-white/10 flex items-center shrink-0">
             <Link href="/player/dashboard" className="flex items-center justify-center group">
               <img
                 src="/images/logo.png"
@@ -137,7 +137,7 @@ export default function Sidebar({ user }) {
         </div>
 
         {/* Bottom User Profile Section */}
-        <div className="p-4 border-t border-white/10 bg-[#06070a]">
+        <div className="p-4 border-t border-white/10 bg-[#06070a] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#FFCC00]/20 border border-[#FFCC00]/40 text-[#FFCC00] font-black text-sm flex items-center justify-center shrink-0">
               {user?.username ? user.username[0].toUpperCase() : 'P'}

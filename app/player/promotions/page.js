@@ -73,13 +73,12 @@ export default function PlayerPromotionsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#07080b] text-slate-100 flex flex-col font-sans">
-      <div className="flex-1 flex flex-col lg:flex-row">
-        {/* Desktop Sidebar & Mobile Drawer */}
-        <Sidebar user={user} />
+    <div className="min-h-screen bg-[#07080b] text-slate-100 flex">
+      {/* Desktop Sidebar & Mobile Drawer */}
+      <Sidebar user={user} />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
           <PlayerHeader
             user={user}
             onOpenChat={() => setIsChatOpen(true)}
@@ -299,7 +298,6 @@ export default function PlayerPromotionsPage() {
             )}
           </main>
         </div>
-      </div>
 
       {/* Floating 24/7 WhatsApp Chat Support */}
       <WhatsAppChat
