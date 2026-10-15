@@ -13,8 +13,42 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
   const [unreadCount, setUnreadCount] = useState(0);
   const [bannerAlert, setBannerAlert] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState('100dvh');
   const messagesEndRef = useRef(null);
   const lastNotifiedMsgRef = useRef('');
+
+  // WhatsApp-like mobile keyboard handling: Lock background scroll and sync with visualViewport
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const prevOverflow = document.body.style.overflow;
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      document.body.style.overflow = 'hidden';
+    }
+
+    const updateHeight = () => {
+      if (typeof window !== 'undefined' && window.visualViewport && window.innerWidth < 640) {
+        setViewportHeight(`${window.visualViewport.height}px`);
+        window.scrollTo(0, 0);
+      } else {
+        setViewportHeight('100dvh');
+      }
+    };
+
+    if (typeof window !== 'undefined' && window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateHeight);
+      window.visualViewport.addEventListener('scroll', updateHeight);
+      updateHeight();
+    }
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      if (typeof window !== 'undefined' && window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateHeight);
+        window.visualViewport.removeEventListener('scroll', updateHeight);
+      }
+    };
+  }, [isOpen]);
 
   const handleOpen = () => {
     setInternalIsOpen(true);
@@ -230,7 +264,10 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
 
       {/* 2. Humanized Live Chat Desk Modal (Triggered via Header or Action) */}
       {isOpen && (
-        <div className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 w-full sm:w-96 sm:max-w-[calc(100vw-32px)] h-[100dvh] sm:h-[560px] sm:max-h-[calc(100vh-100px)] bg-[#121b22] border-0 sm:border sm:border-[#2a3942] rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in sm:zoom-in-95 duration-200 font-sans">
+        <div
+          style={{ height: viewportHeight }}
+          className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 w-full sm:w-96 sm:max-w-[calc(100vw-32px)] sm:h-[560px] sm:max-h-[calc(100vh-100px)] bg-[#121b22] border-0 sm:border sm:border-[#2a3942] rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in sm:zoom-in-95 duration-200 font-sans overscroll-contain"
+        >
           {/* Header with Human Support Representative Theme */}
           <div className="bg-[#005c4b] px-4 py-3 text-white flex items-center justify-between shadow-md select-none shrink-0">
             <div className="flex items-center gap-3">
@@ -331,10 +368,16 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onFocus={() => {
-                setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 250);
+                setTimeout(() => {
+                  if (typeof window !== 'undefined' && window.visualViewport && window.innerWidth < 640) {
+                    setViewportHeight(`${window.visualViewport.height}px`);
+                    window.scrollTo(0, 0);
+                  }
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
               }}
               placeholder="Type your message to support..."
-              className="flex-1 bg-[#2a3942] text-[#d1d7db] text-xs sm:text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder-[#8696a0]"
+              className="flex-1 bg-[#2a3942] text-[#d1d7db] text-[16px] sm:text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder-[#8696a0]"
             />
             <button
               type="submit"
