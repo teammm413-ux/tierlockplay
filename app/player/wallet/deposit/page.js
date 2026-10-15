@@ -348,9 +348,10 @@ export default function DepositPage() {
                     {[
                       { name: 'Cash App', icon: '💵', badge: 'Popular' },
                       { name: 'Google & Apple Pay', icon: '📱', badge: '1-Click' },
-                      { name: 'PayPal', icon: '🅿️', badge: 'Secured' },
                       { name: 'Chime', icon: '🏦', badge: 'Direct' },
-                      { name: 'Debit / Credit Card', icon: '💳', badge: 'Instant' },
+                      { name: 'BTC Lightning', icon: '⚡', badge: 'Instant' },
+                      { name: 'Debit / Credit Card', icon: '💳', badge: 'Fast' },
+                      { name: 'PayPal', icon: '🅿️', badge: 'Secured' },
                     ].map((channel) => {
                       const isActive = payUsing === channel.name;
                       return (

@@ -74,8 +74,16 @@ export async function POST(request) {
       });
     }
 
-    // Call TapTapUp status check API
-    const gatewayStatus = await checkTapTapUpStatus(checkToken);
+    // Call TapTapUp status check API (GET /api/v1/status/{token})
+    let gatewayStatus = await checkTapTapUpStatus(checkToken);
+
+    // If GET status did not report completed, try POST /api/v1/verify-token
+    if (!gatewayStatus || !gatewayStatus.success || gatewayStatus.status !== 'completed') {
+      const tokenVerification = await verifyTapTapUpToken(checkToken);
+      if (tokenVerification && tokenVerification.success && tokenVerification.status === 'completed') {
+        gatewayStatus = tokenVerification;
+      }
+    }
 
     if (gatewayStatus && gatewayStatus.success && gatewayStatus.status === 'completed') {
       const user = await User.findById(session.id);
