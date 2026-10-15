@@ -8,26 +8,19 @@ import WhatsAppChat from '@/components/WhatsAppChat';
 import {
   Sparkles,
   Gift,
-  Copy,
-  Check,
   CreditCard,
   MessageCircle,
   Clock,
   RefreshCw,
-  Tag,
   Flame,
-  ChevronRight,
-  ShieldCheck,
-  AlertCircle
+  ChevronRight
 } from 'lucide-react';
 
 export default function PlayerPromotionsPage() {
   const [user, setUser] = useState(null);
   const [promotions, setPromotions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [copiedId, setCopiedId] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [filter, setFilter] = useState('all'); // 'all' | 'codes' | 'bonus'
 
   const refreshUserData = async () => {
     try {
@@ -57,21 +50,6 @@ export default function PlayerPromotionsPage() {
     loadPromotions();
   }, []);
 
-  const handleCopyCode = (code, id) => {
-    if (!code) return;
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(code);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2500);
-    }
-  };
-
-  const filteredPromos = promotions.filter((p) => {
-    if (filter === 'codes') return Boolean(p.promo_code);
-    if (filter === 'bonus') return Number(p.bonus_amount || 0) > 0;
-    return true;
-  });
-
   return (
     <div className="min-h-screen bg-[#07080b] text-slate-100 flex">
       {/* Desktop Sidebar & Mobile Drawer */}
@@ -93,11 +71,11 @@ export default function PlayerPromotionsPage() {
                     <Sparkles className="w-4 h-4" />
                   </span>
                   <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">
-                    Promotions &amp; Exclusive Bonuses
+                    Promotions &amp; Special Offers
                   </h1>
                 </div>
                 <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                  Live reload matches, weekend freeplay drops, and official promo codes. Enter codes during deposit or claim with live chat.
+                  Live reload matches, weekend freeplay drops, and ongoing special announcements. Claim directly by depositing or messaging 24/7 Live Support!
                 </p>
               </div>
 
@@ -122,34 +100,7 @@ export default function PlayerPromotionsPage() {
               </div>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {[
-                { id: 'all', label: 'All Promotions', count: promotions.length },
-                { id: 'codes', label: 'Promo Codes', count: promotions.filter(p => p.promo_code).length },
-                { id: 'bonus', label: 'Cashback & Freeplay', count: promotions.filter(p => Number(p.bonus_amount || 0) > 0).length },
-              ].map((tab) => {
-                const isActive = filter === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setFilter(tab.id)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                      isActive
-                        ? 'bg-[#FFCC00] text-slate-950 font-black shadow-md'
-                        : 'bg-[#101117] text-slate-300 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <span>{tab.label}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${
-                      isActive ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-white/10 text-slate-400'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+
 
             {/* Promotions List / Grid */}
             {isLoading ? (
@@ -188,9 +139,8 @@ export default function PlayerPromotionsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {filteredPromos.map((promo) => {
+                {promotions.map((promo) => {
                   const hasBonus = Number(promo.bonus_amount || 0) > 0;
-                  const isCopied = copiedId === promo.id;
                   const dateStr = promo.created_at
                     ? new Date(promo.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     : 'Active Now';
@@ -234,42 +184,6 @@ export default function PlayerPromotionsPage() {
                         <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line bg-[#181922] p-4 rounded-2xl border border-white/5">
                           {promo.message}
                         </p>
-
-                        {/* Promo Code Box (if present) */}
-                        {promo.promo_code && (
-                          <div className="p-3.5 rounded-2xl bg-[#0a0b10] border border-[#FFCC00]/30 flex items-center justify-between gap-3">
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                                Promo Code
-                              </span>
-                              <span className="text-sm sm:text-base font-black text-[#FFCC00] font-mono tracking-widest">
-                                {promo.promo_code}
-                              </span>
-                            </div>
-
-                            <button
-                              onClick={() => handleCopyCode(promo.promo_code, promo.id)}
-                              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
-                                isCopied
-                                  ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
-                                  : 'bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black shadow-sm'
-                              }`}
-                              title="Copy Promo Code"
-                            >
-                              {isCopied ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>COPIED!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3.5 h-3.5" />
-                                  <span>COPY CODE</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
                       </div>
 
                       {/* Footer Actions */}

@@ -473,11 +473,6 @@ export default function PlayerDashboard() {
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Live Promotion
                     </span>
-                    {activePromo.promoCode && (
-                      <span className="text-[11px] font-mono font-black text-[#FFCC00] bg-[#FFCC00]/15 px-2.5 py-0.5 rounded-lg border border-[#FFCC00]/30">
-                        Code: {activePromo.promoCode}
-                      </span>
-                    )}
                   </div>
                   <h3 className="text-base font-black text-white mt-1 leading-snug">
                     {activePromo.title}
