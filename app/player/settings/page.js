@@ -10,6 +10,8 @@ import {
   Lock,
   CreditCard,
   Laptop,
+  Smartphone,
+  Tablet,
   Globe,
   Edit2,
   Copy,
@@ -37,6 +39,40 @@ export default function AccountSettingsPage() {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [clientDevice, setClientDevice] = useState({ name: 'This Device', type: 'desktop' });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ua = window.navigator.userAgent.toLowerCase();
+      let dName = 'Web Browser';
+      let dType = 'desktop';
+
+      if (ua.includes('iphone')) {
+        dName = 'iPhone (iOS)';
+        dType = 'mobile';
+      } else if (ua.includes('ipad')) {
+        dName = 'iPad (iPadOS)';
+        dType = 'tablet';
+      } else if (ua.includes('android')) {
+        dType = 'mobile';
+        const match = window.navigator.userAgent.match(/Android[^;]+;\s*([^;)]+)/);
+        let model = match && match[1] ? match[1].trim() : '';
+        if (model.includes('Build/')) model = model.split('Build/')[0].trim();
+        if (model && !model.toLowerCase().includes('k')) {
+          dName = `Android (${model})`;
+        } else {
+          dName = 'Android Mobile';
+        }
+      } else if (ua.includes('macintosh') || ua.includes('mac os x')) {
+        dName = 'macOS (Desktop)';
+        dType = 'desktop';
+      } else if (ua.includes('windows')) {
+        dName = 'Windows (PC)';
+        dType = 'desktop';
+      }
+      setClientDevice({ name: dName, type: dType });
+    }
+  }, []);
 
   // Password state & visibility toggles
   const [passwordData, setPasswordData] = useState({
@@ -676,20 +712,30 @@ export default function AccountSettingsPage() {
               {/* Session Item */}
               <div className="flex items-center gap-3 pt-2">
                 <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#FFCC00]">
-                  <Laptop className="w-5 h-5" />
+                  {clientDevice.type === 'mobile' || (user?.last_login_device && /android|iphone|mobile/i.test(user.last_login_device)) ? (
+                    <Smartphone className="w-5 h-5" />
+                  ) : clientDevice.type === 'tablet' || (user?.last_login_device && /ipad|tablet/i.test(user.last_login_device)) ? (
+                    <Tablet className="w-5 h-5" />
+                  ) : (
+                    <Laptop className="w-5 h-5" />
+                  )}
                 </div>
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-white">macOS</span>
+                    <span className="text-sm font-bold text-white">
+                      {user?.last_login_device && user.last_login_device.toLowerCase() !== 'macos'
+                        ? user.last_login_device
+                        : clientDevice.name}
+                    </span>
                     <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold px-2 py-0.5 rounded-full">
                       This device
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                     <Globe className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{user?.last_login_ip || '182.190.183.135'}</span>
+                    <span>{user?.last_login_ip || '127.0.0.1'}</span>
                     <span>·</span>
-                    <span>{user?.last_login_time || '2026-10-02 12:10'}</span>
+                    <span>{user?.last_login_time || 'Just now'}</span>
                   </div>
                 </div>
               </div>

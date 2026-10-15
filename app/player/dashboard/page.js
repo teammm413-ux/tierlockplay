@@ -71,11 +71,32 @@ export default function PlayerDashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  const [currentDevice, setCurrentDevice] = useState('This Device');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ua = window.navigator.userAgent.toLowerCase();
+      let dName = 'Web Browser';
+      if (ua.includes('iphone')) dName = 'iPhone (iOS)';
+      else if (ua.includes('ipad')) dName = 'iPad (iPadOS)';
+      else if (ua.includes('android')) {
+        const match = window.navigator.userAgent.match(/Android[^;]+;\s*([^;)]+)/);
+        let model = match && match[1] ? match[1].trim() : '';
+        if (model.includes('Build/')) model = model.split('Build/')[0].trim();
+        dName = model && !model.toLowerCase().includes('k') ? `Android (${model})` : 'Android Mobile';
+      } else if (ua.includes('macintosh') || ua.includes('mac os x')) dName = 'macOS (Desktop)';
+      else if (ua.includes('windows')) dName = 'Windows (PC)';
+      setCurrentDevice(dName);
+    }
+  }, []);
+
   const balance = Number(user?.wallet_balance || 0).toFixed(2);
   const username = user?.username || 'alex';
-  const lastLoginTime = user?.last_login_time || '2026-10-01 11:10:22';
-  const lastLoginIp = user?.last_login_ip || '182.190.183.135';
-  const lastLoginDevice = user?.last_login_device || 'macos';
+  const lastLoginTime = user?.last_login_time || new Date().toISOString().replace('T', ' ').substring(0, 19);
+  const lastLoginIp = user?.last_login_ip || '127.0.0.1';
+  const lastLoginDevice = (user?.last_login_device && user.last_login_device.toLowerCase() !== 'macos')
+    ? user.last_login_device
+    : currentDevice;
   const accountStatus = user?.account_status || 'Active';
   const userInviteCode = user?.invite_code || 'VIP777';
 

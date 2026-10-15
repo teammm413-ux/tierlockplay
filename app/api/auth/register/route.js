@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { connectToDatabase, User } from '@/lib/mongodb';
 import { signUserToken } from '@/lib/auth';
 import { checkInviteCode } from '@/app/api/auth/validate-invite/route';
+import { getClientIp, parseDeviceFromUserAgent } from '@/lib/device';
 
 export async function POST(request) {
   try {
@@ -98,6 +99,10 @@ export async function POST(request) {
       formattedPhone = clean.startsWith('1') ? `+${clean}` : `+1${clean}`;
     }
 
+    const ua = request.headers.get('user-agent') || '';
+    const clientDevice = parseDeviceFromUserAgent(ua);
+    const clientIp = getClientIp(request);
+
     const newUserDoc = await User.create({
       username: cleanUsername,
       email: cleanEmail,
@@ -113,8 +118,8 @@ export async function POST(request) {
       referred_by: sponsorCode || 'DIRECT',
       is_subscribed: true,
       last_login_time: now,
-      last_login_ip: '127.0.0.1',
-      last_login_device: 'Macos',
+      last_login_ip: clientIp,
+      last_login_device: clientDevice,
       device_id: deviceId,
       last_device_id: deviceId,
     });

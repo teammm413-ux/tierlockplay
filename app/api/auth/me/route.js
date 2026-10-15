@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase, User } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
+import { getClientIp, parseDeviceFromUserAgent } from '@/lib/device';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,29 @@ export async function GET(request) {
 
     if (!user) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
+    }
+
+    // Detect real device & IP from current browser request
+    const ua = request.headers.get('user-agent') || '';
+    const currentDevice = parseDeviceFromUserAgent(ua);
+    const currentIp = getClientIp(request);
+
+    let effectiveDevice = user.last_login_device;
+    let effectiveIp = user.last_login_ip;
+
+    if (!effectiveDevice || effectiveDevice.toLowerCase() === 'macos') {
+      effectiveDevice = currentDevice;
+    }
+    if (!effectiveIp || effectiveIp === '182.190.183.135' || effectiveIp === '127.0.0.1') {
+      effectiveIp = currentIp !== '127.0.0.1' ? currentIp : (user.last_login_ip || '127.0.0.1');
+    }
+
+    // Asynchronously sync device details in background
+    if (user._id && (user.last_login_device !== effectiveDevice || (currentIp !== '127.0.0.1' && user.last_login_ip !== currentIp))) {
+      User.updateOne(
+        { _id: user._id },
+        { $set: { last_login_device: effectiveDevice, last_login_ip: effectiveIp } }
+      ).catch(() => {});
     }
 
     return NextResponse.json({
@@ -51,9 +75,9 @@ export async function GET(request) {
         invite_code: user.invite_code || 'VIP777',
         referred_by: user.referred_by || '',
         is_subscribed: !!user.is_subscribed,
-        last_login_time: user.last_login_time || '2026-10-02 12:10',
-        last_login_ip: user.last_login_ip || '182.190.183.135',
-        last_login_device: user.last_login_device || 'Macos',
+        last_login_time: user.last_login_time || new Date().toISOString().replace('T', ' ').substring(0, 19),
+        last_login_ip: effectiveIp,
+        last_login_device: effectiveDevice,
       },
     });
   } catch (error) {

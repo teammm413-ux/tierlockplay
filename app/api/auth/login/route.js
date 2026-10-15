@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { connectToDatabase, User } from '@/lib/mongodb';
 import { signUserToken } from '@/lib/auth';
+import { getClientIp, parseDeviceFromUserAgent } from '@/lib/device';
 
 export async function POST(request) {
   try {
@@ -60,14 +61,23 @@ export async function POST(request) {
       user.last_device_id = deviceId;
     }
 
-    // Update last login & persist device_id directly to database
+    // Detect real client IP and device from request
+    const ua = request.headers.get('user-agent') || '';
+    const clientDevice = parseDeviceFromUserAgent(ua);
+    const clientIp = getClientIp(request);
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
     user.last_login_time = now;
+    user.last_login_ip = clientIp;
+    user.last_login_device = clientDevice;
+
     await User.updateOne(
       { _id: user._id },
       {
         $set: {
           last_login_time: now,
+          last_login_ip: clientIp,
+          last_login_device: clientDevice,
           ...(deviceId ? { device_id: user.device_id || deviceId, last_device_id: deviceId } : {})
         }
       }
@@ -88,8 +98,8 @@ export async function POST(request) {
       invite_code: user.invite_code || 'VIP777',
       is_subscribed: !!user.is_subscribed,
       last_login_time: now,
-      last_login_ip: user.last_login_ip || '182.190.183.135',
-      last_login_device: user.last_login_device || 'Macos',
+      last_login_ip: clientIp,
+      last_login_device: clientDevice,
     };
 
     const token = signUserToken(safeUser);
