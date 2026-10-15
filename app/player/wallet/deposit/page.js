@@ -378,11 +378,42 @@ export default function DepositPage() {
                   </div>
                 </div>
 
-                {/* Select Amount Grid */}
+                {/* REQUIREMENT 7: Custom Amount Blank ($2 to $100+) at the TOP */}
+                <div className="bg-[#101117] border border-white/10 focus-within:border-[#FFCC00]/50 rounded-2xl p-5 space-y-3 transition shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Enter Deposit Amount</span>
+                      <span className="text-[#FFCC00] font-black">($2.00 to $100.00+)</span>
+                    </label>
+                    {isUsingCustom && (
+                      <span className="text-[10px] font-black uppercase text-[#FFCC00] bg-[#FFCC00]/10 border border-[#FFCC00]/30 px-2 py-0.5 rounded-full">
+                        Custom Amount Selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative flex items-center border border-white/10 rounded-xl px-4 py-3 focus-within:border-[#FFCC00] bg-[#181922] transition">
+                    <span className="text-[#FFCC00] font-black text-base mr-2">$</span>
+                    <input
+                      type="number"
+                      min="2"
+                      max="1000"
+                      step="any"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      placeholder="Write your custom amount (e.g. 2.00, 15.00, 75.00)"
+                      className="w-full bg-transparent text-white text-[16px] sm:text-sm font-bold focus:outline-none font-mono placeholder:font-normal placeholder-slate-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Customer can write their own deposit amount starting from <strong className="text-white">$2.00</strong> up to the maximum limit on TapTapUp.
+                  </p>
+                </div>
+
+                {/* Or Choose Preset Amount Grid below */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                      Select Deposit Amount
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Or Choose Preset Amount
                     </label>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
@@ -411,36 +442,6 @@ export default function DepositPage() {
                       );
                     })}
                   </div>
-                </div>
-
-                {/* REQUIREMENT 7: Custom Amount Blank ($2 to $100+) */}
-                <div className="bg-[#101117] border border-white/10 rounded-2xl p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                      Or Enter Custom Amount ($2.00 to $100.00+)
-                    </label>
-                    {isUsingCustom && (
-                      <span className="text-[10px] font-black uppercase text-[#FFCC00] bg-[#FFCC00]/10 border border-[#FFCC00]/30 px-2 py-0.5 rounded-full">
-                        Custom Amount Selected
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative flex items-center border border-white/10 rounded-xl px-4 py-3 focus-within:border-[#FFCC00] bg-[#181922]">
-                    <span className="text-[#FFCC00] font-black text-sm mr-2">$</span>
-                    <input
-                      type="number"
-                      min="2"
-                      max="1000"
-                      step="any"
-                      value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
-                      placeholder="Write your custom amount (e.g. 2.00, 15.00, 75.00)"
-                      className="w-full bg-transparent text-white text-sm font-bold focus:outline-none font-mono placeholder:font-normal placeholder-slate-500"
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Customer can write their own deposit amount starting from <strong className="text-white">$2.00</strong> up to the maximum limit on TapTapUp.
-                  </p>
                 </div>
               </div>
 

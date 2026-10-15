@@ -199,9 +199,30 @@ export default function PlayerDashboard() {
         />
 
         {/* Content Area */}
-        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
-          {/* Welcome Card */}
-          <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 shadow-sm border border-white/10">
+        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto flex flex-col space-y-6">
+          {/* Mobile-Only Top Wallet Balance Card */}
+          <div className="order-1 sm:hidden bg-[#101117] rounded-3xl p-6 border border-[#FFCC00]/30 shadow-[0_0_25px_rgba(255,204,0,0.06)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
+                <span className="w-6 h-6 rounded-lg bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center shrink-0">
+                  <Wallet className="w-3.5 h-3.5" />
+                </span>
+                <span>Wallet Balance</span>
+              </div>
+              <Link
+                href="/player/wallet/deposit"
+                className="text-[11px] font-black uppercase text-slate-950 bg-[#FFCC00] hover:bg-yellow-300 px-3 py-1 rounded-lg transition"
+              >
+                + Deposit
+              </Link>
+            </div>
+            <div className="text-3xl font-black text-[#FFCC00] mt-3 font-mono drop-shadow-[0_0_10px_rgba(255,204,0,0.3)]">
+              ${balance}
+            </div>
+          </div>
+
+          {/* Welcome Card - On Desktop: top (sm:order-1), On Mobile: below game accounts & stats (order-4) */}
+          <div className="order-4 sm:order-1 bg-[#101117] rounded-3xl p-6 sm:p-8 shadow-sm border border-white/10">
             <h1 className="text-xl sm:text-2xl font-black text-white mb-6 uppercase tracking-tight">
               Welcome back, <span className="text-[#FFCC00]">{username}</span>!
             </h1>
@@ -223,10 +244,10 @@ export default function PlayerDashboard() {
             </div>
           </div>
 
-          {/* 4 Stat Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Card 1: Wallet Balance */}
-            <div className="bg-[#101117] rounded-3xl p-6 border border-[#FFCC00]/30 hover:border-[#FFCC00] transition shadow-[0_0_25px_rgba(255,204,0,0.06)]">
+          {/* Stat Cards Grid - On Desktop: sm:order-2 (all 4 in row), On Mobile: order-3 (Username, Status, Accounts below Game Accounts) */}
+          <div className="order-3 sm:order-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* Card 1: Wallet Balance (Desktop only, mobile has it pinned at order-1) */}
+            <div className="hidden sm:block bg-[#101117] rounded-3xl p-6 border border-[#FFCC00]/30 hover:border-[#FFCC00] transition shadow-[0_0_25px_rgba(255,204,0,0.06)]">
               <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
                 <span className="w-6 h-6 rounded-lg bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center shrink-0">
                   <Wallet className="w-3.5 h-3.5" />
@@ -279,8 +300,8 @@ export default function PlayerDashboard() {
             </div>
           </div>
 
-          {/* REQUIREMENT 17: MY CREATED GAME ACCOUNTS & CREDENTIALS ON DASHBOARD */}
-          <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/30 shadow-[0_0_40px_rgba(255,204,0,0.06)] space-y-6">
+          {/* REQUIREMENT 17: MY CREATED GAME ACCOUNTS & CREDENTIALS ON DASHBOARD - On Mobile: order-2 (MOVED UP), On Desktop: sm:order-3 */}
+          <div className="order-2 sm:order-3 bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/30 shadow-[0_0_40px_rgba(255,204,0,0.06)] space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#FFCC00]/15 text-[#FFCC00] flex items-center justify-center shrink-0 border border-[#FFCC00]/30">
@@ -428,8 +449,8 @@ export default function PlayerDashboard() {
             )}
           </div>
 
-          {/* VIP Referral & Invite Program Card */}
-          <div className="bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/25 shadow-[0_0_30px_rgba(255,204,0,0.05)]">
+          {/* VIP Referral & Invite Program Card - On Mobile: order-5, On Desktop: sm:order-4 */}
+          <div className="order-5 sm:order-4 bg-[#101117] rounded-3xl p-6 sm:p-8 border border-[#FFCC00]/25 shadow-[0_0_30px_rgba(255,204,0,0.05)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <div className="flex items-center gap-2">
