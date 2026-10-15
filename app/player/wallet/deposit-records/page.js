@@ -19,7 +19,9 @@ import {
   Wallet,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  ImageIcon
 } from 'lucide-react';
 
 export default function DepositRecordsPage() {
@@ -36,6 +38,7 @@ export default function DepositRecordsPage() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [previewScreenshot, setPreviewScreenshot] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -468,6 +471,20 @@ export default function DepositRecordsPage() {
                           <td className="py-4 px-4">
                             <span className="text-[10px] text-slate-500 block font-semibold">TierlockPay</span>
                             <span className="font-semibold text-slate-200">{r.payment_method}</span>
+                            {r.sender_tag && (
+                              <div className="text-[10px] text-amber-300 font-mono mt-0.5 font-bold truncate max-w-[140px]">
+                                Tag: {r.sender_tag}
+                              </div>
+                            )}
+                            {r.proof_image && (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewScreenshot(r.proof_image)}
+                                className="text-[10px] text-[#FFCC00] hover:underline font-bold flex items-center gap-1 mt-1"
+                              >
+                                <Eye className="w-3 h-3" /> View Screenshot
+                              </button>
+                            )}
                           </td>
                           <td className="py-4 px-4 font-black text-white font-mono">
                             ${Number(r.paid_amount || 0).toFixed(2)}
@@ -575,6 +592,39 @@ export default function DepositRecordsPage() {
         onClose={() => setIsChatOpen(false)}
         user={user}
       />
+
+      {/* Lightbox Modal for Player Screenshot */}
+      {previewScreenshot && (
+        <div
+          onClick={() => setPreviewScreenshot(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-pointer animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#101117] border border-white/20 rounded-3xl p-4 max-w-2xl w-full max-h-[85vh] flex flex-col space-y-3 cursor-default shadow-2xl"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Eye className="w-4 h-4 text-[#FFCC00]" />
+                <span>Uploaded Payment Screenshot</span>
+              </span>
+              <button
+                onClick={() => setPreviewScreenshot(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-black/50 rounded-2xl">
+              <img
+                src={previewScreenshot}
+                alt="Payment Proof"
+                className="max-h-[65vh] max-w-full object-contain rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

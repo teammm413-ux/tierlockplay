@@ -20,7 +20,7 @@ export async function POST(request) {
     await expireStaleDeposits();
 
     const body = await request.json();
-    const { paymentMethod, paidAmount, receivedAmount, senderCashtag } = body;
+    const { paymentMethod, paidAmount, receivedAmount, senderCashtag, sender_tag, proof_image } = body;
 
     const paid = parseFloat(paidAmount);
     const received = parseFloat(receivedAmount || paidAmount);
@@ -37,8 +37,48 @@ export async function POST(request) {
     const orderNo = generateOrderNo();
     const balanceBefore = user.wallet_balance || 0;
     const balanceAfter = balanceBefore;
+    const finalSenderTag = (sender_tag || senderCashtag || '').trim();
 
-    // Call payment gateway to get secure hosted checkout redirect URL
+    // Check if this method is configured as Manual (e.g. Chime or PayPal)
+    const normalizedMethod = (paymentMethod || '').toLowerCase();
+    const isManualMethod = normalizedMethod.includes('chime') || normalizedMethod.includes('paypal');
+
+    if (isManualMethod) {
+      const deposit = await DepositRequest.create({
+        order_no: orderNo,
+        user_id: user._id.toString(),
+        username: user.username,
+        payment_method: paymentMethod || 'Chime',
+        paid_amount: paid,
+        received_amount: received,
+        service_fee: 0.00,
+        status: 'Pending',
+        wallet_balance_before: balanceBefore,
+        wallet_balance_after: balanceAfter,
+        sender_tag: finalSenderTag,
+        transaction_proof: finalSenderTag,
+        proof_image: (proof_image || '').trim(),
+        payment_gateway: 'Manual',
+        admin_notes: 'Awaiting admin verification of manual payment',
+        created_at: new Date(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours for manual review
+      });
+
+      return NextResponse.json({
+        success: true,
+        isManual: true,
+        message: 'Deposit submitted successfully! Admin will review your screenshot and credit your balance.',
+        orderNo: deposit.order_no,
+        paidAmount: deposit.paid_amount,
+        receivedAmount: deposit.received_amount,
+        status: deposit.status,
+        senderTag: deposit.sender_tag,
+        proofImage: deposit.proof_image,
+        paymentGateway: 'Manual',
+      });
+    }
+
+    // Otherwise, call automated payment gateway for instant checkout
     let gatewayData = null;
     let gatewayError = null;
 
@@ -68,7 +108,9 @@ export async function POST(request) {
       status: isGatewayOk ? 'Pending' : 'Created',
       wallet_balance_before: balanceBefore,
       wallet_balance_after: balanceAfter,
-      transaction_proof: senderCashtag || '',
+      sender_tag: finalSenderTag,
+      transaction_proof: finalSenderTag,
+      proof_image: (proof_image || '').trim(),
       payment_gateway: process.env.REVSOL_MERCHANT_NAME || 'Payment Gateway',
       product_id: gatewayData?.productId || getChannelProductId(paymentMethod) || 0,
       payment_token: gatewayData?.token || '',

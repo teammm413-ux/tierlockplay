@@ -44,8 +44,10 @@ export async function GET(request) {
       status: d.status,
       wallet_balance_before: d.wallet_balance_before || 0,
       wallet_balance_after: d.wallet_balance_after || 0,
-      transaction_proof: d.transaction_proof || '',
-      payment_gateway: d.payment_gateway || 'TapTapUp',
+      sender_tag: d.sender_tag || d.transaction_proof || '',
+      transaction_proof: d.transaction_proof || d.sender_tag || '',
+      proof_image: d.proof_image || '',
+      payment_gateway: d.payment_gateway || 'Manual',
       payment_token: d.payment_token || '',
       gateway_order_id: d.gateway_order_id || '',
       redirect_url: d.redirect_url || '',
@@ -72,7 +74,7 @@ export async function POST(request) {
 
     await connectToDatabase();
     const body = await request.json();
-    const { id, action, reason, note } = body;
+    const { id, action, reason, note, approvedAmount } = body;
     const finalNote = (note || reason || '').trim();
 
     if (!id || !action) {
@@ -98,8 +100,13 @@ export async function POST(request) {
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
     if (action === 'approve') {
+      const parsedAmount = parseFloat(approvedAmount);
+      const creditAmount = (!isNaN(parsedAmount) && parsedAmount >= 0)
+        ? parsedAmount
+        : parseFloat(deposit.received_amount || deposit.paid_amount || 0);
+
       const balanceBefore = user ? (user.wallet_balance || 0) : (deposit.wallet_balance_before || 0);
-      const balanceAfter = parseFloat((balanceBefore + deposit.received_amount).toFixed(2));
+      const balanceAfter = parseFloat((balanceBefore + creditAmount).toFixed(2));
 
       // Update user wallet balance in MongoDB
       if (user) {
@@ -108,6 +115,7 @@ export async function POST(request) {
       }
 
       // Update deposit request in MongoDB
+      deposit.received_amount = creditAmount;
       deposit.status = 'Approved';
       deposit.wallet_balance_before = balanceBefore;
       deposit.wallet_balance_after = balanceAfter;
@@ -119,30 +127,33 @@ export async function POST(request) {
       await ChromeNotification.create({
         user_id: deposit.user_id,
         title: 'Deposit Approved! 💰',
-        message: `Your deposit of $${deposit.received_amount.toFixed(2)} via ${deposit.payment_method} has been credited. ${finalNote ? `Note: ${finalNote}` : ''}`,
+        message: `Your deposit of $${creditAmount.toFixed(2)} via ${deposit.payment_method} has been credited to your wallet balance. ${finalNote ? `Note: ${finalNote}` : ''}`,
       });
 
       return NextResponse.json({
         success: true,
-        message: `Deposit #${deposit.order_no} of $${deposit.received_amount.toFixed(2)} approved!`,
+        message: `Deposit #${deposit.order_no} approved! $${creditAmount.toFixed(2)} credited to ${deposit.username}'s wallet.`,
       });
     } else if (action === 'reject') {
+      if (!finalNote) {
+        return NextResponse.json({ success: false, message: 'Please provide a rejection note explaining why this deposit was rejected.' }, { status: 400 });
+      }
+
       deposit.status = 'Rejected';
-      deposit.admin_notes = finalNote || 'Deposit rejected by admin';
-      deposit.failure_reason = finalNote || 'Rejected by admin';
+      deposit.admin_notes = finalNote;
+      deposit.failure_reason = finalNote;
       deposit.processed_at = now;
-      if (finalNote) deposit.transaction_proof = `Reason: ${finalNote}`;
       await deposit.save();
 
       await ChromeNotification.create({
         user_id: deposit.user_id,
         title: 'Deposit Rejected ⚠️',
-        message: `Your deposit #${deposit.order_no} of $${deposit.paid_amount.toFixed(2)} was rejected. Reason: ${finalNote || 'Please contact support'}`,
+        message: `Your deposit #${deposit.order_no} of $${deposit.paid_amount.toFixed(2)} was rejected. Reason: ${finalNote}`,
       });
 
       return NextResponse.json({
         success: true,
-        message: `Deposit #${deposit.order_no} has been rejected.`,
+        message: `Deposit #${deposit.order_no} has been rejected. Reason: ${finalNote}`,
       });
     }
 

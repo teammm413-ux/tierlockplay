@@ -33,13 +33,14 @@ export async function POST(request) {
     const cleanBase = path.basename(origName, ext).toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 40);
     const fileName = `${Date.now()}-${cleanBase}${ext}`;
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'games');
+    const targetFolder = (formData.get('folder') || 'games').toString().replace(/[^a-z0-9_-]/gi, '');
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', targetFolder || 'games');
     await fs.mkdir(uploadDir, { recursive: true });
 
     const filePath = path.join(uploadDir, fileName);
     await fs.writeFile(filePath, buffer);
 
-    const publicUrl = `/uploads/games/${fileName}`;
+    const publicUrl = `/uploads/${targetFolder || 'games'}/${fileName}`;
 
     return NextResponse.json({
       success: true,
