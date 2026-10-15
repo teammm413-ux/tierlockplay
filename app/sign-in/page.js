@@ -42,12 +42,22 @@ export default function SignInPage() {
 
     setIsLoading(true);
     try {
-      const deviceId = getOrCreateDeviceId();
+      let deviceId = '';
+      try {
+        if (typeof getOrCreateDeviceId === 'function') {
+          deviceId = getOrCreateDeviceId();
+        } else if (typeof window !== 'undefined') {
+          deviceId = localStorage.getItem('trp_device_id') || '';
+        }
+      } catch (devErr) {
+        console.warn('Could not read device id:', devErr);
+      }
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          usernameOrEmail: formData.usernameOrEmail,
+          usernameOrEmail: formData.usernameOrEmail.trim(),
           password: formData.password,
           deviceId,
         }),
@@ -62,7 +72,8 @@ export default function SignInPage() {
         refreshCaptcha();
       }
     } catch (err) {
-      setErrorMsg('Connection error. Please try again.');
+      console.error('Sign-in error:', err);
+      setErrorMsg(err?.message && !err.message.includes('fetch') && !err.message.includes('function') ? err.message : 'Connection error. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -93,13 +93,23 @@ function SignUpContent() {
 
     setIsSubmitting(true);
     try {
-      const deviceId = getOrCreateDeviceId();
+      let deviceId = '';
+      try {
+        if (typeof getOrCreateDeviceId === 'function') {
+          deviceId = getOrCreateDeviceId();
+        } else if (typeof window !== 'undefined') {
+          deviceId = localStorage.getItem('trp_device_id') || '';
+        }
+      } catch (devErr) {
+        console.warn('Could not read device id:', devErr);
+      }
+
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
+          username: formData.username.trim(),
+          email: formData.email.trim(),
           password: formData.password,
           inviteCode: inviteCode.trim() || undefined,
           deviceId,
@@ -118,7 +128,8 @@ function SignUpContent() {
         refreshCaptcha();
       }
     } catch (err) {
-      setFormError('Connection error. Please try again.');
+      console.error('Sign-up error:', err);
+      setFormError(err?.message && !err.message.includes('fetch') && !err.message.includes('function') ? err.message : 'Connection error. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
