@@ -108,7 +108,7 @@ export default function PlayerPromotionsPage() {
                 <RefreshCw className="w-8 h-8 text-[#FFCC00] animate-spin mx-auto" />
                 <p className="text-xs text-slate-400 font-medium">Checking live promotion feeds...</p>
               </div>
-            ) : filteredPromos.length === 0 ? (
+            ) : promotions.length === 0 ? (
               <div className="bg-[#101117] border border-white/10 rounded-3xl p-8 sm:p-12 text-center space-y-4 max-w-xl mx-auto shadow-xl">
                 <div className="w-16 h-16 rounded-3xl bg-[#FFCC00]/10 border border-[#FFCC00]/30 text-[#FFCC00] mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(255,204,0,0.1)]">
                   <Gift className="w-8 h-8" />
