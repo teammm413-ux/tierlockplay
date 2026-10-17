@@ -24,7 +24,9 @@ import {
   ShieldCheck,
   HelpCircle,
   Save,
-  Plus
+  Plus,
+  Gift,
+  Percent
 } from 'lucide-react';
 
 export default function AdminDepositsPage() {
@@ -51,6 +53,14 @@ export default function AdminDepositsPage() {
   const [isLoadingMethods, setIsLoadingMethods] = useState(false);
   const [uploadingMethodId, setUploadingMethodId] = useState(null);
   const [savingMethodId, setSavingMethodId] = useState(null);
+
+  // Deposit Bonus Match System State
+  const [bonusConfig, setBonusConfig] = useState({
+    first_deposit_bonus_percentage: 300,
+    regular_deposit_bonus_percentage: 50,
+    is_active: true,
+  });
+  const [isSavingBonus, setIsSavingBonus] = useState(false);
 
   const loadDeposits = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -83,9 +93,45 @@ export default function AdminDepositsPage() {
     }
   };
 
+  const loadBonusConfig = async () => {
+    try {
+      const res = await fetch('/api/admin/deposit-bonus');
+      const data = await res.json();
+      if (data.success && data.config) {
+        setBonusConfig(data.config);
+      }
+    } catch (err) {
+      // silent
+    }
+  };
+
+  const handleSaveBonusConfig = async (e) => {
+    if (e) e.preventDefault();
+    setIsSavingBonus(true);
+    try {
+      const res = await fetch('/api/admin/deposit-bonus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bonusConfig),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionNotice('Deposit Bonus Match Settings saved successfully!');
+        if (data.config) setBonusConfig(data.config);
+      } else {
+        alert(data.message || 'Failed to save bonus config');
+      }
+    } catch (err) {
+      alert('Network error saving bonus settings');
+    } finally {
+      setIsSavingBonus(false);
+    }
+  };
+
   useEffect(() => {
     loadDeposits(false);
     loadDepositMethods();
+    loadBonusConfig();
   }, [statusFilter, searchQuery]);
 
   // Real-time automatic background polling every 4 seconds
@@ -99,10 +145,11 @@ export default function AdminDepositsPage() {
   const openActionModal = (deposit, action) => {
     setActiveModalItem(deposit);
     setModalAction(action);
-    setCreditAmountInput(String(deposit.received_amount || deposit.paid_amount || ''));
+    const suggestedCredit = deposit.total_credit_amount || deposit.received_amount || deposit.paid_amount || '';
+    setCreditAmountInput(String(suggestedCredit));
     setNoteInput(
       action === 'approve'
-        ? 'Payment verified and credited to wallet balance.'
+        ? `Payment verified. Credited $${suggestedCredit} to wallet balance.`
         : 'Payment screenshot unverified or tag not found in account.'
     );
   };
@@ -408,18 +455,36 @@ export default function AdminDepositsPage() {
                               <div className="font-black text-[#FFCC00] text-sm">
                                 ${Number(d.paid_amount || 0).toFixed(2)}
                               </div>
-                              <div className="text-[10px] text-slate-400">
-                                Credited: ${Number(d.received_amount || d.paid_amount || 0).toFixed(2)}
-                              </div>
+                              {d.bonus_percentage ? (
+                                <div className="mt-1">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-400/20 text-[#FFCC00] border border-[#FFCC00]/30">
+                                    <Gift className="w-2.5 h-2.5" /> +{d.bonus_percentage}% ({d.bonus_type === 'first_deposit' ? '1st Bonus' : 'Reload'})
+                                  </span>
+                                  <div className="text-[10px] font-bold text-emerald-400 mt-0.5">
+                                    Total: ${Number(d.total_credit_amount || d.received_amount || d.paid_amount || 0).toFixed(2)}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-slate-400">
+                                  Credited: ${Number(d.received_amount || d.paid_amount || 0).toFixed(2)}
+                                </div>
+                              )}
                             </td>
                             <td className="py-4 px-4 font-mono text-slate-200">
-                              {d.sender_tag || d.transaction_proof ? (
-                                <span className="bg-[#181922] px-2.5 py-1 rounded-lg border border-white/10 font-bold text-amber-300">
-                                  {d.sender_tag || d.transaction_proof}
-                                </span>
-                              ) : (
-                                <span className="text-slate-500 italic">None</span>
-                              )}
+                              <div className="space-y-1">
+                                {d.sender_tag || d.transaction_proof ? (
+                                  <span className="bg-[#181922] px-2.5 py-1 rounded-lg border border-white/10 font-bold text-amber-300 block w-fit">
+                                    {d.sender_tag || d.transaction_proof}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-500 italic block">None</span>
+                                )}
+                                {d.sender_email && (
+                                  <span className="text-[10px] text-slate-300 block truncate max-w-[140px]" title={d.sender_email}>
+                                    ✉️ {d.sender_email}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             {/* Payment Screenshot Thumbnail Column */}
                             <td className="py-4 px-4">
@@ -515,6 +580,98 @@ export default function AdminDepositsPage() {
               <p className="text-xs text-slate-400 leading-relaxed">
                 Provide your custom payment link (URL) and payment instructions or QR / cashtag screenshot. Players will click your link to transfer funds, and then submit their payment screenshot and username tag for manual approval.
               </p>
+            </div>
+
+            {/* Deposit Bonus Match System Settings Card */}
+            <div className="bg-[#101117] rounded-2xl border border-amber-500/30 p-6 space-y-4 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-white/10 gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-[#FFCC00] flex items-center justify-center">
+                    <Gift className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-white text-base tracking-tight flex items-center gap-2">
+                      <span>Deposit Bonus Match Configuration</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-[#FFCC00] font-bold">
+                        Auto Calculator
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Set bonus match rates. User requests will automatically include calculated bonus coins for admin review.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer self-start sm:self-auto bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+                  <span className="text-xs font-bold text-slate-300">
+                    {bonusConfig.is_active ? 'Bonus Active' : 'Bonus Disabled'}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={bonusConfig.is_active}
+                    onChange={(e) => setBonusConfig((prev) => ({ ...prev, is_active: e.target.checked }))}
+                    className="w-4 h-4 accent-[#FFCC00] rounded cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-[#181922] p-4 rounded-xl border border-white/10 space-y-2">
+                  <label className="block text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Percent className="w-4 h-4 text-[#FFCC00]" />
+                    <span>First Deposit Bonus Match (%)</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={bonusConfig.first_deposit_bonus_percentage}
+                      onChange={(e) => setBonusConfig((prev) => ({ ...prev, first_deposit_bonus_percentage: Number(e.target.value) }))}
+                      className="w-full bg-[#07080b] border border-white/10 text-white font-mono font-black text-base px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-[#FFCC00]"
+                      placeholder="300"
+                    />
+                    <span className="absolute right-3.5 text-slate-400 font-bold text-sm">%</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    E.g. 300% bonus turns $50 into $200 total coins. Automatically applied on player&apos;s 1st approved deposit.
+                  </p>
+                </div>
+
+                <div className="bg-[#181922] p-4 rounded-xl border border-white/10 space-y-2">
+                  <label className="block text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Percent className="w-4 h-4 text-[#FFCC00]" />
+                    <span>Regular Reload Bonus Match (%)</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={bonusConfig.regular_deposit_bonus_percentage}
+                      onChange={(e) => setBonusConfig((prev) => ({ ...prev, regular_deposit_bonus_percentage: Number(e.target.value) }))}
+                      className="w-full bg-[#07080b] border border-white/10 text-white font-mono font-black text-base px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-[#FFCC00]"
+                      placeholder="50"
+                    />
+                    <span className="absolute right-3.5 text-slate-400 font-bold text-sm">%</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    E.g. 50% bonus turns $50 into $75 total coins. Automatically applied on subsequent deposits.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveBonusConfig}
+                  disabled={isSavingBonus}
+                  className="px-6 py-2.5 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 shadow-lg disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingBonus ? 'Saving...' : 'Save Bonus Settings'}</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -782,16 +939,55 @@ export default function AdminDepositsPage() {
                   <span className="font-bold text-amber-300">{activeModalItem.payment_method}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Player Tag / Username:</span>
-                  <span className="font-mono font-bold text-white">
+                  <span className="text-slate-400">Player Tag / Sign:</span>
+                  <span className="font-mono font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded">
                     {activeModalItem.sender_tag || activeModalItem.transaction_proof || 'N/A'}
                   </span>
                 </div>
+                {activeModalItem.sender_email && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Player Tag Email:</span>
+                    <span className="font-mono font-bold text-slate-200">
+                      {activeModalItem.sender_email}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                  <span className="text-slate-400">Player Submitted Amount:</span>
-                  <span className="font-black text-white font-mono text-sm">${activeModalItem.paid_amount} USD</span>
+                  <span className="text-slate-400">Player Paid Amount:</span>
+                  <span className="font-black text-white font-mono text-sm">${Number(activeModalItem.paid_amount || 0).toFixed(2)} USD</span>
                 </div>
               </div>
+
+              {/* Bonus Match Calculation Breakdown */}
+              {activeModalItem.bonus_percentage ? (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs space-y-2">
+                  <div className="flex items-center justify-between font-bold text-amber-300">
+                    <span className="flex items-center gap-1.5">
+                      <Gift className="w-4 h-4 text-[#FFCC00]" />
+                      <span>{activeModalItem.bonus_type === 'first_deposit' ? 'First Deposit Bonus Match' : 'Regular Reload Bonus Match'}</span>
+                    </span>
+                    <span className="px-2 py-0.5 bg-[#FFCC00] text-slate-950 font-black rounded text-[11px]">
+                      +{activeModalItem.bonus_percentage}%
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center pt-1 font-mono">
+                    <div className="bg-[#181922] p-2 rounded-xl border border-white/5">
+                      <div className="text-[10px] text-slate-400">Paid</div>
+                      <div className="font-bold text-white text-xs">${Number(activeModalItem.paid_amount || 0).toFixed(2)}</div>
+                    </div>
+                    <div className="bg-[#181922] p-2 rounded-xl border border-white/5">
+                      <div className="text-[10px] text-slate-400">Bonus</div>
+                      <div className="font-bold text-[#FFCC00] text-xs">+${Number(activeModalItem.bonus_amount || 0).toFixed(2)}</div>
+                    </div>
+                    <div className="bg-[#181922] p-2 rounded-xl border border-white/5">
+                      <div className="text-[10px] text-slate-400">Total Credits</div>
+                      <div className="font-black text-emerald-400 text-xs">
+                        ${Number(activeModalItem.total_credit_amount || activeModalItem.paid_amount || 0).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Payment Screenshot Proof in Modal */}
               {activeModalItem.proof_image && (

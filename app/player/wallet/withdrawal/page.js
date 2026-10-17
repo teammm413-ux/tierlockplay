@@ -14,7 +14,12 @@ import {
   Loader2,
   CreditCard,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Upload,
+  Gamepad2,
+  QrCode,
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 
 const DEFAULT_METHODS = [
@@ -55,6 +60,11 @@ export default function WithdrawalPage() {
   const [availableMethods, setAvailableMethods] = useState(DEFAULT_METHODS);
   const [selectedMethodName, setSelectedMethodName] = useState('Cash App');
   const [paymentInfo, setPaymentInfo] = useState('');
+  const [userTagName, setUserTagName] = useState('');
+  const [gameScreenshot, setGameScreenshot] = useState('');
+  const [qrScreenshot, setQrScreenshot] = useState('');
+  const [isUploadingGame, setIsUploadingGame] = useState(false);
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
   const [amount, setAmount] = useState('50');
   const [savedMethods, setSavedMethods] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,25 +149,62 @@ export default function WithdrawalPage() {
     }
   };
 
+  const handleProofUpload = async (file, type) => {
+    if (!file) return;
+    if (type === 'game') setIsUploadingGame(true);
+    if (type === 'qr') setIsUploadingQr(true);
+    setErrorMsg('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/wallet/upload-proof', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        if (type === 'game') setGameScreenshot(data.url);
+        if (type === 'qr') setQrScreenshot(data.url);
+      } else {
+        setErrorMsg(data.message || 'Image upload failed. Please try again.');
+      }
+    } catch (err) {
+      setErrorMsg('Network error uploading screenshot proof.');
+    } finally {
+      if (type === 'game') setIsUploadingGame(false);
+      if (type === 'qr') setIsUploadingQr(false);
+    }
+  };
+
   const handleWithdrawalSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
-    // Requirement 12: No minimum withdrawal limit! (must only be > 0)
     if (parsedAmount <= 0) {
       setErrorMsg('Please enter a valid withdrawal amount.');
       return;
     }
 
-    if (!user || (user.wallet_balance || 0) < parsedAmount) {
-      setErrorMsg(
-        `Insufficient balance. You currently have $${Number(user?.wallet_balance || 0).toFixed(2)}`
-      );
+    if (!paymentInfo.trim()) {
+      setErrorMsg(`Please enter your ${activeMethodObj.field_label || 'payout account details'}`);
       return;
     }
 
-    if (!paymentInfo.trim()) {
-      setErrorMsg(`Please enter your ${activeMethodObj.field_label || 'account details'}`);
+    if (!userTagName.trim()) {
+      setErrorMsg('Please enter your account tag name / username.');
+      return;
+    }
+
+    if (!gameScreenshot) {
+      setErrorMsg('Please upload a screenshot of your in-game balance / winnings.');
+      return;
+    }
+
+    if (!qrScreenshot) {
+      setErrorMsg('Please upload a screenshot of your payout QR scanner code or tag.');
       return;
     }
 
@@ -170,6 +217,9 @@ export default function WithdrawalPage() {
           paymentMethod: activeMethodObj.name,
           paymentInfo: paymentInfo.trim(),
           amount: parsedAmount,
+          user_tag_name: userTagName.trim(),
+          game_screenshot: gameScreenshot,
+          qr_screenshot: qrScreenshot,
         }),
       });
 
@@ -181,10 +231,11 @@ export default function WithdrawalPage() {
           receivingAmount: receivingAmount,
           channel: activeMethodObj.name,
           paymentInfo: paymentInfo.trim(),
+          userTagName: userTagName.trim(),
         });
         refreshUserData();
       } else {
-        setErrorMsg(data.message || 'Withdrawal failed. Please try again.');
+        setErrorMsg(data.message || 'Withdrawal request failed. Please try again.');
       }
     } catch (err) {
       setErrorMsg('Network error. Please try again.');
@@ -226,11 +277,12 @@ export default function WithdrawalPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Card: Input details */}
             <div className="lg:col-span-7 bg-[#101117] rounded-3xl p-6 sm:p-7 shadow-[0_0_30px_rgba(255,204,0,0.04)] border border-white/10 space-y-5">
-              {/* Withdrawable Amount */}
+              {/* Cashout / Payout Header */}
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <span className="text-xs font-semibold text-slate-300">Withdrawable Balance:</span>
-                <span className="text-[#FFCC00] font-mono text-lg font-black drop-shadow-[0_0_10px_rgba(255,204,0,0.3)]">
-                  ${Number(user?.wallet_balance || 0).toFixed(2)} USD
+                <span className="text-xs font-semibold text-slate-300">Game Winnings Cashout</span>
+                <span className="text-emerald-400 font-bold text-xs flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Manual Verification Dispatch</span>
                 </span>
               </div>
 
@@ -313,7 +365,22 @@ export default function WithdrawalPage() {
                 </p>
               </div>
 
-              {/* Withdrawal Amount Input (Requirement 12: No minimum withdrawal limit) */}
+              {/* Mandatory Field 1: User's Payout Tag Name */}
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5 flex items-center justify-between">
+                  <span>Your Receiving Tag Name / Handle *</span>
+                  <span className="text-[10px] text-amber-400 font-semibold">Required</span>
+                </label>
+                <input
+                  type="text"
+                  value={userTagName}
+                  onChange={(e) => setUserTagName(e.target.value)}
+                  placeholder="e.g. $MyCashtag, @ChimeUser, or PaypalUsername"
+                  className="w-full bg-[#181922] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#FFCC00] font-mono"
+                />
+              </div>
+
+              {/* Withdrawal Amount Input */}
               <div className="relative pt-1">
                 <label className="text-xs font-bold text-slate-300 block mb-1.5">
                   Withdrawal Amount
@@ -356,6 +423,114 @@ export default function WithdrawalPage() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* MANDATORY PROOF 1: In-Game Screenshot */}
+              <div className="pt-2 border-t border-white/10 space-y-2">
+                <label className="text-xs font-bold text-slate-200 block flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Gamepad2 className="w-4 h-4 text-[#FFCC00]" />
+                    <span>1. In-Game Screenshot Proof *</span>
+                  </span>
+                  <span className="text-[10px] text-amber-400 font-semibold">Required</span>
+                </label>
+                <p className="text-[11px] text-slate-400">
+                  Upload screenshot from inside your game showing your current balance, points, or winning score.
+                </p>
+
+                {gameScreenshot ? (
+                  <div className="relative group rounded-xl border border-white/15 bg-[#181922] p-2 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={gameScreenshot}
+                        alt="Game Proof"
+                        className="w-14 h-14 object-cover rounded-lg border border-white/10"
+                      />
+                      <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Game proof attached
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setGameScreenshot('')}
+                      className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" /> Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-white/15 hover:border-[#FFCC00]/50 rounded-2xl bg-[#181922]/50 hover:bg-[#181922] cursor-pointer transition group">
+                    <Upload className="w-6 h-6 text-slate-400 group-hover:text-[#FFCC00] mb-1.5 transition" />
+                    <span className="text-xs font-bold text-slate-200 group-hover:text-white">
+                      {isUploadingGame ? 'Uploading Game Proof...' : 'Upload Game Screenshot'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">PNG, JPG, or WebP up to 10MB</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingGame}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleProofUpload(f, 'game');
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* MANDATORY PROOF 2: Payout QR Code / Tag Screenshot */}
+              <div className="pt-2 border-t border-white/10 space-y-2">
+                <label className="text-xs font-bold text-slate-200 block flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <QrCode className="w-4 h-4 text-[#FFCC00]" />
+                    <span>2. Payout QR Code or Cashtag Screenshot *</span>
+                  </span>
+                  <span className="text-[10px] text-amber-400 font-semibold">Required</span>
+                </label>
+                <p className="text-[11px] text-slate-400">
+                  Upload screenshot of your payment QR code scanner or verified cashtag screen to receive payment.
+                </p>
+
+                {qrScreenshot ? (
+                  <div className="relative group rounded-xl border border-white/15 bg-[#181922] p-2 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={qrScreenshot}
+                        alt="QR Proof"
+                        className="w-14 h-14 object-cover rounded-lg border border-white/10"
+                      />
+                      <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Payout QR / tag attached
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setQrScreenshot('')}
+                      className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" /> Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-white/15 hover:border-[#FFCC00]/50 rounded-2xl bg-[#181922]/50 hover:bg-[#181922] cursor-pointer transition group">
+                    <Upload className="w-6 h-6 text-slate-400 group-hover:text-[#FFCC00] mb-1.5 transition" />
+                    <span className="text-xs font-bold text-slate-200 group-hover:text-white">
+                      {isUploadingQr ? 'Uploading QR Proof...' : 'Upload QR Code / Tag Screenshot'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">PNG, JPG, or WebP up to 10MB</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingQr}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleProofUpload(f, 'qr');
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
             </div>
 

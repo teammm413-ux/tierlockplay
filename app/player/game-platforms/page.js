@@ -635,24 +635,48 @@ export default function GamePlatformsPage() {
 
             <form onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                  Select Load Amount (USD)
-                </label>
-                <div className="grid grid-cols-4 gap-2 mb-3">
-                  {['10', '20', '50', '100'].map((preset) => (
-                    <button
-                      type="button"
-                      key={preset}
-                      onClick={() => setAmountInput(preset)}
-                      className={`py-2 text-xs font-bold rounded-xl border transition ${
-                        amountInput === preset
-                          ? 'bg-[#FFCC00] text-slate-950 border-[#FFCC00]'
-                          : 'bg-[#181922] text-slate-300 border-white/10 hover:border-white/30'
-                      }`}
-                    >
-                      ${preset}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-300">
+                    Select Load Amount (USD)
+                  </label>
+                  <span className="text-[11px] font-mono text-[#FFCC00]">
+                    Max: ${Number(user?.wallet_balance || 0).toFixed(2)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 gap-2 mb-3">
+                  {['10', '20', '50', '100'].map((preset) => {
+                    const presetNum = parseFloat(preset);
+                    const walletBal = Number(user?.wallet_balance || 0);
+                    const isDisabled = walletBal < presetNum;
+                    return (
+                      <button
+                        type="button"
+                        key={preset}
+                        disabled={isDisabled}
+                        onClick={() => {
+                          const capped = Math.min(presetNum, walletBal);
+                          setAmountInput(String(capped));
+                        }}
+                        className={`py-2 text-xs font-bold rounded-xl border transition ${
+                          amountInput === preset
+                            ? 'bg-[#FFCC00] text-slate-950 border-[#FFCC00]'
+                            : isDisabled
+                            ? 'bg-[#181922]/50 text-slate-600 border-white/5 cursor-not-allowed'
+                            : 'bg-[#181922] text-slate-300 border-white/10 hover:border-white/30'
+                        }`}
+                      >
+                        ${preset}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    disabled={Number(user?.wallet_balance || 0) <= 0}
+                    onClick={() => setAmountInput(String(Number(user?.wallet_balance || 0)))}
+                    className="py-2 text-xs font-black rounded-xl border border-[#FFCC00]/40 bg-[#FFCC00]/15 text-[#FFCC00] hover:bg-[#FFCC00] hover:text-slate-950 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    MAX
+                  </button>
                 </div>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
@@ -661,13 +685,33 @@ export default function GamePlatformsPage() {
                   <input
                     type="number"
                     min="1"
+                    max={Number(user?.wallet_balance || 0)}
                     step="any"
                     value={amountInput}
-                    onChange={(e) => setAmountInput(e.target.value)}
-                    placeholder="Enter custom amount"
-                    className="w-full bg-[#181922] border border-white/10 text-white font-mono font-bold text-sm pl-8 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-[#FFCC00]"
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === '') {
+                        setAmountInput('');
+                        return;
+                      }
+                      const num = parseFloat(raw);
+                      const maxBal = Number(user?.wallet_balance || 0);
+                      if (!isNaN(num) && num > maxBal) {
+                        setAmountInput(String(maxBal));
+                      } else {
+                        setAmountInput(raw);
+                      }
+                    }}
+                    placeholder={Number(user?.wallet_balance || 0) <= 0 ? 'Insufficient wallet balance' : `Enter amount (max $${Number(user?.wallet_balance || 0).toFixed(2)})`}
+                    disabled={Number(user?.wallet_balance || 0) <= 0}
+                    className="w-full bg-[#181922] border border-white/10 text-white font-mono font-bold text-sm pl-8 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-[#FFCC00] disabled:opacity-50"
                   />
                 </div>
+                {Number(user?.wallet_balance || 0) <= 0 && (
+                  <p className="text-[11px] text-amber-400 mt-1.5">
+                    Your wallet balance is $0.00. Please deposit to your wallet before requesting a game load.
+                  </p>
+                )}
               </div>
 
               <button

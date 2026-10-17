@@ -20,7 +20,12 @@ import {
   ToggleLeft,
   ToggleRight,
   Sliders,
-  Settings
+  Settings,
+  Eye,
+  Gamepad2,
+  QrCode,
+  ExternalLink,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export default function AdminWithdrawalsPage() {
@@ -37,6 +42,9 @@ export default function AdminWithdrawalsPage() {
   const [modalAction, setModalAction] = useState('approve'); // 'approve' or 'reject'
   const [noteInput, setNoteInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Lightbox modal for viewing screenshot proofs (Game and QR)
+  const [previewScreenshot, setPreviewScreenshot] = useState(null);
 
   // Payment Methods Management State
   const [payoutMethods, setPayoutMethods] = useState([]);
@@ -98,7 +106,7 @@ export default function AdminWithdrawalsPage() {
     setNoteInput(
       action === 'approve'
         ? `Funds sent to ${item.payment_method}: ${item.payment_info}`
-        : 'Invalid payout info or tag not found. Amount refunded to your wallet.'
+        : 'In-game score/balance unverified or payout tag invalid.'
     );
   };
 
@@ -111,6 +119,11 @@ export default function AdminWithdrawalsPage() {
   const handleModalSubmit = async (e) => {
     e.preventDefault();
     if (!activeModalItem || isSubmitting) return;
+
+    if (modalAction === 'reject' && !noteInput.trim()) {
+      alert('Please provide a reason note explaining why this withdrawal is being rejected.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -358,7 +371,10 @@ export default function AdminWithdrawalsPage() {
                       <th className="py-4 px-4">Player</th>
                       <th className="py-4 px-4">Payout Method</th>
                       <th className="py-4 px-4">Account Details</th>
+                      <th className="py-4 px-4">User Tag Name</th>
                       <th className="py-4 px-4">Amount to Send</th>
+                      <th className="py-4 px-4">Game Proof</th>
+                      <th className="py-4 px-4">Payout QR / Tag</th>
                       <th className="py-4 px-4">Status &amp; Reason</th>
                       <th className="py-4 px-4">Created Time</th>
                       <th className="py-4 px-4 text-right">Actions</th>
@@ -367,7 +383,7 @@ export default function AdminWithdrawalsPage() {
                   <tbody className="divide-y divide-white/5">
                     {withdrawals.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-16 text-center text-slate-500">
+                        <td colSpan={11} className="py-16 text-center text-slate-500">
                           <div className="flex flex-col items-center justify-center gap-2">
                             <AlertCircle className="w-7 h-7 text-slate-600" />
                             <span className="font-semibold text-slate-400">
@@ -426,8 +442,61 @@ export default function AdminWithdrawalsPage() {
                                 </button>
                               </span>
                             </td>
+                            <td className="py-4 px-4 font-mono text-slate-200">
+                              {w.user_tag_name ? (
+                                <span className="bg-[#181922] px-2 py-1 rounded-lg border border-white/10 font-bold text-amber-300 inline-block">
+                                  {w.user_tag_name}
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 italic text-[11px]">N/A</span>
+                              )}
+                            </td>
                             <td className="py-4 px-4 font-mono font-black text-emerald-400 text-sm">
                               ${Number(w.received_amount || w.amount).toFixed(2)}
+                            </td>
+                            {/* Game Proof Screenshot Column */}
+                            <td className="py-4 px-4">
+                              {w.game_screenshot ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewScreenshot(w.game_screenshot)}
+                                  className="group relative flex items-center gap-1.5 p-1 bg-[#181922] rounded-lg border border-white/15 hover:border-[#FFCC00] transition overflow-hidden"
+                                  title="Click to view full game proof screenshot"
+                                >
+                                  <img
+                                    src={w.game_screenshot}
+                                    alt="Game Proof"
+                                    className="w-10 h-10 object-cover rounded-md"
+                                  />
+                                  <span className="text-[10px] font-bold text-slate-300 group-hover:text-[#FFCC00] pr-1 flex items-center gap-1">
+                                    <Eye className="w-3 h-3" /> View
+                                  </span>
+                                </button>
+                              ) : (
+                                <span className="text-slate-500 text-[11px] italic">No image</span>
+                              )}
+                            </td>
+                            {/* Payout QR Proof Screenshot Column */}
+                            <td className="py-4 px-4">
+                              {w.qr_screenshot ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewScreenshot(w.qr_screenshot)}
+                                  className="group relative flex items-center gap-1.5 p-1 bg-[#181922] rounded-lg border border-white/15 hover:border-[#FFCC00] transition overflow-hidden"
+                                  title="Click to view full QR code screenshot"
+                                >
+                                  <img
+                                    src={w.qr_screenshot}
+                                    alt="QR Proof"
+                                    className="w-10 h-10 object-cover rounded-md"
+                                  />
+                                  <span className="text-[10px] font-bold text-slate-300 group-hover:text-[#FFCC00] pr-1 flex items-center gap-1">
+                                    <Eye className="w-3 h-3" /> View
+                                  </span>
+                                </button>
+                              ) : (
+                                <span className="text-slate-500 text-[11px] italic">No image</span>
+                              )}
                             </td>
                             <td className="py-4 px-4">
                               <div className="space-y-1">
@@ -693,15 +762,15 @@ export default function AdminWithdrawalsPage() {
           </div>
         )}
 
-        {/* Modal for Approve / Reject with Player Note */}
+        {/* Modal for Approve / Reject with Player Note & Screenshot Previews */}
         {activeModalItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-[#101117] border border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
+            <div className="bg-[#101117] border border-white/15 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <FileText className="w-5 h-5 text-[#FFCC00]" />
                   <h3 className="font-black text-white text-sm uppercase">
-                    {modalAction === 'approve' ? 'Mark Payout Sent & Add Note' : 'Reject Withdrawal & Refund Player'}
+                    {modalAction === 'approve' ? 'Mark Payout Sent & Add Note' : 'Reject Withdrawal & Send Reason Note'}
                   </h3>
                 </div>
                 <button
@@ -712,7 +781,7 @@ export default function AdminWithdrawalsPage() {
                 </button>
               </div>
 
-              <div className="bg-[#181922] p-3.5 rounded-xl border border-white/5 text-xs space-y-1.5">
+              <div className="bg-[#181922] p-4 rounded-2xl border border-white/10 text-xs space-y-2">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Order #:</span>
                   <span className="font-mono font-bold text-white">{activeModalItem.order_no}</span>
@@ -726,8 +795,93 @@ export default function AdminWithdrawalsPage() {
                   <span className="font-mono font-bold text-[#FFCC00]">{activeModalItem.payment_info} ({activeModalItem.payment_method})</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Amount:</span>
+                  <span className="text-slate-400">User Payout Tag:</span>
+                  <span className="font-mono font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded">
+                    {activeModalItem.user_tag_name || activeModalItem.payment_info}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                  <span className="text-slate-400">Payout Amount:</span>
                   <span className="font-black text-emerald-400 font-mono text-sm">${Number(activeModalItem.received_amount || activeModalItem.amount).toFixed(2)} USD</span>
+                </div>
+              </div>
+
+              {/* Submitted Screenshots Review in Modal */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. Game Proof */}
+                <div className="bg-[#181922] p-3 rounded-xl border border-white/10 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                    <span className="flex items-center gap-1">
+                      <Gamepad2 className="w-3.5 h-3.5 text-[#FFCC00]" />
+                      <span>Game Proof:</span>
+                    </span>
+                    {activeModalItem.game_screenshot && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewScreenshot(activeModalItem.game_screenshot)}
+                        className="text-[#FFCC00] hover:underline text-[10px] flex items-center gap-0.5"
+                      >
+                        <Eye className="w-3 h-3" /> Enlarge
+                      </button>
+                    )}
+                  </div>
+                  {activeModalItem.game_screenshot ? (
+                    <div
+                      onClick={() => setPreviewScreenshot(activeModalItem.game_screenshot)}
+                      className="h-28 rounded-lg overflow-hidden border border-white/10 cursor-pointer relative group bg-black/30 flex items-center justify-center"
+                    >
+                      <img
+                        src={activeModalItem.game_screenshot}
+                        alt="Game Screenshot Proof"
+                        className="w-full h-full object-cover group-hover:scale-105 transition"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] font-bold text-white">
+                        Click to view
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-28 rounded-lg border border-dashed border-white/10 flex items-center justify-center text-slate-500 text-[11px]">
+                      No game image
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. QR Code Proof */}
+                <div className="bg-[#181922] p-3 rounded-xl border border-white/10 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                    <span className="flex items-center gap-1">
+                      <QrCode className="w-3.5 h-3.5 text-[#FFCC00]" />
+                      <span>Payout QR / Tag:</span>
+                    </span>
+                    {activeModalItem.qr_screenshot && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewScreenshot(activeModalItem.qr_screenshot)}
+                        className="text-[#FFCC00] hover:underline text-[10px] flex items-center gap-0.5"
+                      >
+                        <Eye className="w-3 h-3" /> Enlarge
+                      </button>
+                    )}
+                  </div>
+                  {activeModalItem.qr_screenshot ? (
+                    <div
+                      onClick={() => setPreviewScreenshot(activeModalItem.qr_screenshot)}
+                      className="h-28 rounded-lg overflow-hidden border border-white/10 cursor-pointer relative group bg-black/30 flex items-center justify-center"
+                    >
+                      <img
+                        src={activeModalItem.qr_screenshot}
+                        alt="Payout QR Proof"
+                        className="w-full h-full object-cover group-hover:scale-105 transition"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] font-bold text-white">
+                        Click to view
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-28 rounded-lg border border-dashed border-white/10 flex items-center justify-center text-slate-500 text-[11px]">
+                      No QR image
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -736,7 +890,7 @@ export default function AdminWithdrawalsPage() {
                   <label className="block text-xs font-bold text-slate-300 mb-1.5">
                     {modalAction === 'approve'
                       ? 'Note for Player (Visible in player records):'
-                      : 'Rejection Reason (Visible to player, funds will be refunded):'}
+                      : 'Rejection Reason (Required - Visible to player):'}
                   </label>
                   <textarea
                     rows={3}
@@ -746,7 +900,7 @@ export default function AdminWithdrawalsPage() {
                     placeholder={
                       modalAction === 'approve'
                         ? 'e.g. Sent via Cash App. Transaction ID: #1234'
-                        : 'e.g. Invalid account details / Could not find account'
+                        : 'e.g. In-game winnings unverified or invalid recipient tag.'
                     }
                     className="w-full bg-[#07080b] border border-white/10 text-white text-xs p-3 rounded-xl focus:outline-none focus:border-[#FFCC00] placeholder-slate-500 transition resize-none"
                   />
@@ -774,11 +928,56 @@ export default function AdminWithdrawalsPage() {
                     ) : modalAction === 'approve' ? (
                       <span>Confirm Sent</span>
                     ) : (
-                      <span>Confirm &amp; Refund</span>
+                      <span>Confirm Rejection</span>
                     )}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Screenshot Lightbox / Fullscreen Viewer */}
+        {previewScreenshot && (
+          <div
+            onClick={() => setPreviewScreenshot(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-150 cursor-pointer"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#101117] border border-white/20 rounded-3xl p-4 max-w-3xl w-full max-h-[90vh] flex flex-col space-y-3 shadow-2xl cursor-default"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-[#FFCC00]" />
+                  <span>Withdrawal Verification Proof Preview</span>
+                </span>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={previewScreenshot}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[#FFCC00] hover:underline flex items-center gap-1 px-2.5 py-1 bg-white/5 rounded-lg border border-white/10"
+                  >
+                    <span>Open Original</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <button
+                    onClick={() => setPreviewScreenshot(null)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-black/50 rounded-2xl min-h-[300px]">
+                <img
+                  src={previewScreenshot}
+                  alt="Full Screenshot"
+                  className="max-h-[70vh] max-w-full object-contain rounded-xl shadow-lg"
+                />
+              </div>
             </div>
           </div>
         )}

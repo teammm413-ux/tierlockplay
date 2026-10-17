@@ -23,7 +23,9 @@ import {
   Image as ImageIcon,
   X,
   Eye,
-  FileCheck
+  FileCheck,
+  Download,
+  Gift
 } from 'lucide-react';
 
 const DENOMINATIONS = [
@@ -56,6 +58,8 @@ export default function DepositPage() {
   // Manual payment methods configuration from admin
   const [manualMethods, setManualMethods] = useState([]);
   const [playerSenderTag, setPlayerSenderTag] = useState('');
+  const [playerSenderEmail, setPlayerSenderEmail] = useState('');
+  const [bonusInfo, setBonusInfo] = useState(null);
   const [proofImage, setProofImage] = useState('');
   const [isUploadingProof, setIsUploadingProof] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
@@ -65,6 +69,11 @@ export default function DepositPage() {
   const activeAmount = isUsingCustom
     ? parseFloat(customAmount).toFixed(2)
     : selectedDenom.usd;
+
+  const appliedBonusPercent = bonusInfo?.applied_bonus_percent ?? 300;
+  const depositNum = parseFloat(activeAmount) || 0;
+  const bonusAmountVal = parseFloat(((depositNum * appliedBonusPercent) / 100).toFixed(2));
+  const totalCreditedCoins = parseFloat((depositNum + bonusAmountVal).toFixed(2));
 
   // Determine if the currently selected channel is a manual channel (Chime, PayPal)
   const currentManualConfig = manualMethods.find(
@@ -94,9 +103,34 @@ export default function DepositPage() {
     } catch (err) {}
   };
 
+  const loadBonusInfo = async () => {
+    try {
+      const res = await fetch('/api/wallet/deposit-bonus');
+      const data = await res.json();
+      if (data.success) {
+        setBonusInfo(data);
+      }
+    } catch (err) {}
+  };
+
+  const handleDownloadQr = (url, name) => {
+    if (!url) return;
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name || 'Payment'}-QR-Code.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      window.open(url, '_blank');
+    }
+  };
+
   useEffect(() => {
     refreshUserData();
     loadManualMethods();
+    loadBonusInfo();
 
     // Check if user was redirected back from payment gateway
     if (typeof window !== 'undefined') {
@@ -175,6 +209,10 @@ export default function DepositPage() {
         alert(`Please enter your ${payUsing} tag / username so admin can verify your payment.`);
         return;
       }
+      if (!playerSenderEmail.trim()) {
+        alert(`Please enter your ${payUsing} account email address.`);
+        return;
+      }
       if (!proofImage) {
         alert('Please upload your payment successful screenshot before submitting.');
         return;
@@ -203,8 +241,9 @@ export default function DepositPage() {
         body: JSON.stringify({
           paymentMethod: payUsing,
           paidAmount: amtNum,
-          receivedAmount: amtNum,
+          receivedAmount: totalCreditedCoins,
           sender_tag: playerSenderTag.trim(),
+          sender_email: playerSenderEmail.trim(),
           senderCashtag: playerSenderTag.trim(),
           proof_image: proofImage,
         }),
@@ -216,9 +255,13 @@ export default function DepositPage() {
           isManual: true,
           orderNo: data.orderNo,
           paidAmount: amtNum.toFixed(2),
-          receivedAmount: amtNum.toFixed(2),
+          receivedAmount: (data.totalCreditAmount || totalCreditedCoins).toFixed(2),
           method: payUsing,
+          bonusPercent: data.bonusPercentage || appliedBonusPercent,
+          bonusAmount: data.bonusAmount || bonusAmountVal,
+          totalCoins: (data.totalCreditAmount || totalCreditedCoins).toFixed(2),
           senderTag: playerSenderTag.trim(),
+          senderEmail: playerSenderEmail.trim(),
           proofImage: proofImage,
           status: 'Pending',
           createdTime: new Date().toLocaleString(),
@@ -590,19 +633,29 @@ export default function DepositPage() {
                             <span className="text-xs font-bold text-white block">
                               Scan or View Official Payment QR
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => setPreviewImage(currentManualConfig.qr_image)}
-                              className="text-[#FFCC00] text-xs font-bold hover:underline flex items-center gap-1"
-                            >
-                              <Eye className="w-3.5 h-3.5" /> Enlarge QR / Details
-                            </button>
+                            <div className="flex items-center gap-3 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImage(currentManualConfig.qr_image)}
+                                className="text-[#FFCC00] text-xs font-bold hover:underline flex items-center gap-1"
+                              >
+                                <Eye className="w-3.5 h-3.5" /> Enlarge QR / Details
+                              </button>
+                              <span className="text-slate-600">•</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadQr(currentManualConfig.qr_image, payUsing)}
+                                className="text-emerald-400 text-xs font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                              >
+                                <Download className="w-3.5 h-3.5" /> Download QR
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Step 2 Form: Tag and Screenshot Upload */}
+                    {/* Step 2 Form: Tag, Email, and Screenshot Upload */}
                     <div className="pt-2 border-t border-white/10 space-y-4">
                       <div className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full bg-[#FFCC00] text-slate-950 font-black text-xs flex items-center justify-center">
@@ -616,7 +669,7 @@ export default function DepositPage() {
                       {/* Player's Tag / Username Field */}
                       <div>
                         <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                          Your {payUsing} Tag / Username / Email *
+                          Your {payUsing} Tag / Username / Handle *
                         </label>
                         <input
                           type="text"
@@ -625,9 +678,25 @@ export default function DepositPage() {
                           onChange={(e) => setPlayerSenderTag(e.target.value)}
                           placeholder={
                             payUsing.toLowerCase().includes('chime')
-                              ? 'e.g. $your_chime_sign or email@example.com'
-                              : 'e.g. your_paypal_tag or email@example.com'
+                              ? 'e.g. $your_chime_sign'
+                              : 'e.g. your_paypal_tag'
                           }
+                          className="w-full bg-[#181922] border border-white/10 text-white text-xs px-3.5 py-3 rounded-xl focus:outline-none focus:border-[#FFCC00] placeholder-slate-500 font-mono"
+                        />
+                      </div>
+
+                      {/* Player's Account Email Field */}
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                          <span>Your {payUsing} Account Email *</span>
+                          <span className="text-[10px] text-slate-500 font-normal">Used to verify payment sender</span>
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={playerSenderEmail}
+                          onChange={(e) => setPlayerSenderEmail(e.target.value)}
+                          placeholder="e.g. your_email@gmail.com"
                           className="w-full bg-[#181922] border border-white/10 text-white text-xs px-3.5 py-3 rounded-xl focus:outline-none focus:border-[#FFCC00] placeholder-slate-500 font-mono"
                         />
                       </div>
@@ -690,6 +759,36 @@ export default function DepositPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Live Bonus Match Banner (First Deposit vs Regular) */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FFCC00]/15 via-yellow-500/10 to-transparent border border-[#FFCC00]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[0_0_20px_rgba(255,204,0,0.06)]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#FFCC00] text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
+                      <Gift className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-[#FFCC00]">
+                          {bonusInfo?.bonus_title || `Deposit Bonus Match (+${appliedBonusPercent}%)`}
+                        </span>
+                        {bonusInfo?.is_first_deposit && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Welcome Offer
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-300 mt-0.5">
+                        Deposit <span className="font-bold text-white font-mono">${activeAmount}</span> &rarr; Receive <span className="font-bold text-emerald-400 font-mono">+${bonusAmountVal.toFixed(2)} Bonus ({appliedBonusPercent}%)</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right self-stretch sm:self-auto bg-[#181922]/70 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-white/5 flex sm:block justify-between items-center">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Credits to Wallet</span>
+                    <span className="text-base font-black text-[#FFCC00] font-mono">
+                      ${totalCreditedCoins.toFixed(2)} USD
+                    </span>
+                  </div>
+                </div>
 
                 {/* Amount Section: Custom Amount Blank at the TOP */}
                 <div className="bg-[#101117] border border-white/10 focus-within:border-[#FFCC00]/50 rounded-2xl p-5 space-y-3 transition shadow-sm">

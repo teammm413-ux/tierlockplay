@@ -39,6 +39,9 @@ export async function GET(request) {
       username: w.username,
       payment_method: w.payment_method,
       payment_info: w.payment_info,
+      user_tag_name: w.user_tag_name || w.payment_info || '',
+      game_screenshot: w.game_screenshot || '',
+      qr_screenshot: w.qr_screenshot || '',
       amount: w.amount,
       service_fee: w.service_fee || 0,
       received_amount: w.received_amount,
@@ -89,12 +92,11 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: `Withdrawal has already been ${item.status.toLowerCase()}` }, { status: 400 });
     }
 
-    const user = await User.findById(item.user_id) || await User.findOne({ username: item.username });
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
     if (action === 'approve') {
       item.status = 'Approved';
-      item.admin_notes = finalNote || 'Payout processed and sent';
+      item.admin_notes = finalNote || 'Payout verified and sent by management';
       item.processed_at = now;
       await item.save();
 
@@ -102,7 +104,7 @@ export async function POST(request) {
       await ChromeNotification.create({
         user_id: item.user_id,
         title: 'Withdrawal Sent! 💸',
-        message: `Your payout of $${item.received_amount.toFixed(2)} (${item.payment_method}: ${item.payment_info}) has been processed! ${finalNote ? `Note: ${finalNote}` : ''}`,
+        message: `Your payout of $${item.received_amount.toFixed(2)} (${item.payment_method}: ${item.user_tag_name || item.payment_info}) has been processed! ${finalNote ? `Note: ${finalNote}` : ''}`,
       });
 
       return NextResponse.json({
@@ -110,27 +112,25 @@ export async function POST(request) {
         message: `Withdrawal #${item.order_no} for $${item.received_amount.toFixed(2)} approved & sent!`,
       });
     } else if (action === 'reject') {
-      // Refund reserved amount back to user's wallet
-      if (user) {
-        user.wallet_balance = parseFloat(((user.wallet_balance || 0) + item.amount).toFixed(2));
-        await user.save();
+      if (!finalNote) {
+        return NextResponse.json({ success: false, message: 'Please provide a rejection note explaining why this withdrawal was rejected.' }, { status: 400 });
       }
 
       item.status = 'Rejected';
-      item.admin_notes = finalNote || 'Rejected by Admin. Funds refunded to wallet balance.';
-      item.failure_reason = finalNote || 'Rejected by Admin. Funds refunded to wallet balance.';
+      item.admin_notes = finalNote;
+      item.failure_reason = finalNote;
       item.processed_at = now;
       await item.save();
 
       await ChromeNotification.create({
         user_id: item.user_id,
-        title: 'Withdrawal Update',
-        message: `Your withdrawal #${item.order_no} was rejected (${finalNote || 'Check details'}). $${item.amount.toFixed(2)} refunded to your wallet.`,
+        title: 'Withdrawal Rejected ⚠️',
+        message: `Your withdrawal #${item.order_no} was rejected. Reason: ${finalNote}`,
       });
 
       return NextResponse.json({
         success: true,
-        message: `Withdrawal #${item.order_no} rejected and $${item.amount.toFixed(2)} refunded to player wallet.`,
+        message: `Withdrawal #${item.order_no} rejected with note: "${finalNote}".`,
       });
     }
 
