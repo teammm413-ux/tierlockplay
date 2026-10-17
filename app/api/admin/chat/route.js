@@ -42,7 +42,9 @@ export async function GET(request) {
         user_id: m.user_id,
         sender_type: m.sender_type,
         sender_name: m.sender_name,
-        message: m.message,
+        message: m.message || '',
+        attachment_url: m.attachment_url || '',
+        attachment_type: m.attachment_type || '',
         is_read_by_user: !!m.is_read_by_user,
         is_read_by_admin: !!m.is_read_by_admin,
         created_at: m.created_at,
@@ -92,7 +94,7 @@ export async function GET(request) {
         phone: u.phone || '',
         wallet_balance: u.wallet_balance || 0,
         account_status: u.account_status || 'Active',
-        last_message: lastMsg ? lastMsg.message : '',
+        last_message: lastMsg ? (lastMsg.message || (lastMsg.attachment_url ? '📷 [Photo Attachment]' : '')) : '',
         last_message_time: lastMsg ? lastMsg.created_at : '',
         unread_count: unreadCount,
       });
@@ -131,10 +133,13 @@ export async function POST(request) {
 
     await connectToDatabase();
     const body = await request.json();
-    const { userId, message } = body;
+    const { userId, message, attachment_url, attachment_type } = body;
 
-    if (!userId || !message || message.trim().length === 0) {
-      return NextResponse.json({ success: false, message: 'User ID and message text are required' }, { status: 400 });
+    const hasMessage = message && message.trim().length > 0;
+    const hasAttachment = attachment_url && attachment_url.trim().length > 0;
+
+    if (!userId || (!hasMessage && !hasAttachment)) {
+      return NextResponse.json({ success: false, message: 'User ID and message text or image attachment are required' }, { status: 400 });
     }
 
     const user = await User.findById(userId);
@@ -142,23 +147,29 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
     }
 
-    const adminName = session.username || 'TRP Support';
+    const adminName = session?.username || 'TRP Support';
 
     // Insert chat message in MongoDB
     const newMsg = await ChatMessage.create({
       user_id: user._id.toString(),
       sender_type: 'admin',
       sender_name: adminName,
-      message: message.trim(),
+      message: hasMessage ? message.trim() : '',
+      attachment_url: hasAttachment ? attachment_url.trim() : '',
+      attachment_type: hasAttachment ? (attachment_type || 'image') : '',
       is_read_by_user: false,
       is_read_by_admin: true,
     });
 
     // Also insert a chrome notification alert for the user so they get notified on the website
+    const previewText = hasMessage
+      ? `"${message.trim().substring(0, 100)}${message.length > 100 ? '...' : ''}"`
+      : 'Sent an image attachment 📷';
+
     await ChromeNotification.create({
       user_id: user._id.toString(),
       title: 'Support Message from Admin 💬',
-      message: `${adminName}: "${message.trim().substring(0, 100)}${message.length > 100 ? '...' : ''}"`,
+      message: `${adminName}: ${previewText}`,
     });
 
     return NextResponse.json({
@@ -171,6 +182,8 @@ export async function POST(request) {
         sender_type: newMsg.sender_type,
         sender_name: newMsg.sender_name,
         message: newMsg.message,
+        attachment_url: newMsg.attachment_url,
+        attachment_type: newMsg.attachment_type,
         created_at: newMsg.created_at,
       },
     });

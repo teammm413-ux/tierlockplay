@@ -39,7 +39,7 @@ export async function GET(request) {
       success: true,
       count: unread.length,
       hasUnread: unread.length > 0,
-      latestMessage: unread.length > 0 ? unread[0].message : null,
+      latestMessage: unread.length > 0 ? (unread[0].message || (unread[0].attachment_url ? 'Sent a photo attachment 📷' : '')) : null,
       senderName: unread.length > 0 ? unread[0].sender_name : null,
       timestamp: unread.length > 0 ? unread[0].created_at : null,
     });

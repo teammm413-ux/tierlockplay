@@ -42,7 +42,9 @@ export async function GET(request) {
       user_id: m.user_id,
       sender_type: m.sender_type,
       sender_name: m.sender_name,
-      message: m.message,
+      message: m.message || '',
+      attachment_url: m.attachment_url || '',
+      attachment_type: m.attachment_type || '',
       is_read_by_user: !!m.is_read_by_user,
       is_read_by_admin: !!m.is_read_by_admin,
       created_at: m.created_at,
@@ -59,10 +61,13 @@ export async function POST(request) {
   try {
     const session = getSessionFromRequest(request);
     const body = await request.json();
-    const { message } = body;
+    const { message, attachment_url, attachment_type } = body;
 
-    if (!message || message.trim().length === 0) {
-      return NextResponse.json({ success: false, message: 'Message content cannot be empty' }, { status: 400 });
+    const hasMessage = message && message.trim().length > 0;
+    const hasAttachment = attachment_url && attachment_url.trim().length > 0;
+
+    if (!hasMessage && !hasAttachment) {
+      return NextResponse.json({ success: false, message: 'Message or file attachment is required' }, { status: 400 });
     }
 
     await connectToDatabase();
@@ -89,7 +94,9 @@ export async function POST(request) {
       user_id: user._id.toString(),
       sender_type: 'user',
       sender_name: user.username,
-      message: message.trim(),
+      message: hasMessage ? message.trim() : '',
+      attachment_url: hasAttachment ? attachment_url.trim() : '',
+      attachment_type: hasAttachment ? (attachment_type || 'image') : '',
       is_read_by_user: true,
       is_read_by_admin: false,
     });
@@ -104,6 +111,8 @@ export async function POST(request) {
         sender_type: newMsg.sender_type,
         sender_name: newMsg.sender_name,
         message: newMsg.message,
+        attachment_url: newMsg.attachment_url,
+        attachment_type: newMsg.attachment_type,
         is_read_by_user: true,
         is_read_by_admin: false,
         created_at: newMsg.created_at,

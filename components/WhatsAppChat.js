@@ -1,7 +1,22 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare, X, CheckCheck, Bell, ChevronRight, UserCheck, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  Send,
+  MessageSquare,
+  X,
+  CheckCheck,
+  Bell,
+  ChevronRight,
+  UserCheck,
+  ShieldCheck,
+  Sparkles,
+  Paperclip,
+  Image as ImageIcon,
+  ExternalLink,
+  Loader2,
+  ZoomIn
+} from 'lucide-react';
 import { playNotificationSound } from '@/lib/sound';
 
 export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }) {
@@ -10,12 +25,16 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [bannerAlert, setBannerAlert] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [viewportHeight, setViewportHeight] = useState('100dvh');
   const messagesEndRef = useRef(null);
   const lastNotifiedMsgRef = useRef('');
+  const fileInputRef = useRef(null);
 
   // WhatsApp-like mobile keyboard handling: Lock background scroll and sync with visualViewport
   useEffect(() => {
@@ -132,29 +151,87 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
     }
   }, [messages, isOpen]);
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please choose an image file (PNG, JPG, WebP, GIF)');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Image file size must be under 15MB');
+      return;
+    }
+
+    const localPreview = URL.createObjectURL(file);
+    setSelectedImage({
+      file,
+      previewUrl: localPreview,
+      name: file.name,
+    });
+    e.target.value = '';
+  };
+
+  const removeSelectedImage = () => {
+    if (selectedImage?.previewUrl) {
+      try {
+        URL.revokeObjectURL(selectedImage.previewUrl);
+      } catch (err) {}
+    }
+    setSelectedImage(null);
+  };
+
   const handleSend = async (e) => {
     if (e) e.preventDefault();
-    if (!newMessage.trim() || isLoading) return;
+    if ((!newMessage.trim() && !selectedImage) || isLoading || isUploadingImage) return;
 
-    const text = newMessage.trim();
-    setNewMessage('');
     setIsLoading(true);
-
-    // Optimistic user message
-    const tempMsg = {
-      id: Date.now(),
-      sender_type: 'user',
-      sender_name: user?.username || 'You',
-      message: text,
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, tempMsg]);
+    let uploadedUrl = '';
 
     try {
+      if (selectedImage?.file) {
+        setIsUploadingImage(true);
+        const formData = new FormData();
+        formData.append('file', selectedImage.file);
+        const upRes = await fetch('/api/chat/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const upData = await upRes.json();
+        if (!upData.success) {
+          alert(upData.message || 'Image upload failed. Please try again.');
+          setIsLoading(false);
+          setIsUploadingImage(false);
+          return;
+        }
+        uploadedUrl = upData.url;
+      }
+
+      const text = newMessage.trim();
+      const currentSelected = selectedImage;
+      setNewMessage('');
+      setSelectedImage(null);
+
+      // Optimistic user message
+      const tempMsg = {
+        id: Date.now(),
+        sender_type: 'user',
+        sender_name: user?.username || 'You',
+        message: text,
+        attachment_url: uploadedUrl || currentSelected?.previewUrl || '',
+        attachment_type: (uploadedUrl || currentSelected) ? 'image' : '',
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, tempMsg]);
+
       const res = await fetch('/api/chat/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          message: text,
+          attachment_url: uploadedUrl,
+          attachment_type: uploadedUrl ? 'image' : '',
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -164,6 +241,7 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsUploadingImage(false);
     }
   };
 
@@ -339,12 +417,34 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
                         }`}
                       >
                         {!isUser && (
-                          <div className="text-[10px] font-bold text-emerald-400 mb-0.5 flex items-center gap-1">
+                          <div className="text-[10px] font-bold text-emerald-400 mb-1 flex items-center gap-1">
                             <UserCheck className="w-3 h-3 text-emerald-400" />
                             <span>{m.sender_name || 'Support Agent'}</span>
                           </div>
                         )}
-                        <p className="whitespace-pre-wrap leading-relaxed break-words">{m.message}</p>
+
+                        {m.attachment_url && (
+                          <div
+                            onClick={() => setLightboxImage(m.attachment_url)}
+                            className="mb-2 max-w-xs rounded-xl overflow-hidden bg-black/40 border border-white/10 cursor-pointer relative group/img transition hover:opacity-95"
+                          >
+                            <img
+                              src={m.attachment_url}
+                              alt="Attachment"
+                              className="max-h-56 w-auto max-w-full rounded-xl object-contain mx-auto"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-bold text-[11px] backdrop-blur-[2px]">
+                              <ZoomIn className="w-4 h-4 text-emerald-400" />
+                              <span>View Photo</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {m.message ? (
+                          <p className="whitespace-pre-wrap leading-relaxed break-words">{m.message}</p>
+                        ) : null}
+
                         <div className="flex items-center justify-end gap-1 mt-1 text-[9px] text-[#8696a0]">
                           <span>{m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                           {isUser && <CheckCheck className="w-3 h-3 text-[#53bdeb]" />}
@@ -358,11 +458,56 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Pending Selected Image Preview before sending */}
+          {selectedImage && (
+            <div className="px-3 py-2 bg-[#182229] border-t border-[#2a3942] flex items-center justify-between gap-2 shrink-0 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-lg overflow-hidden bg-black/50 border border-white/10 shrink-0 relative">
+                  <img src={selectedImage.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-white truncate max-w-[190px] sm:max-w-[220px]">
+                    {selectedImage.name}
+                  </div>
+                  <div className="text-[10px] text-emerald-400 flex items-center gap-1">
+                    <ImageIcon className="w-3 h-3" />
+                    <span>Ready to send with message</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={removeSelectedImage}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition cursor-pointer"
+                title="Remove attachment"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Input Box - Pinned to bottom, adapts to mobile virtual keyboard */}
           <form
             onSubmit={handleSend}
-            className="bg-[#202c33] p-2.5 sm:p-3 flex items-center gap-2 border-t border-[#2a3942] shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+            className="bg-[#202c33] p-2 sm:p-2.5 flex items-center gap-2 border-t border-[#2a3942] shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
           >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="image/*"
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || isUploadingImage}
+              className="w-10 h-10 rounded-full bg-[#2a3942] hover:bg-[#32434e] text-slate-300 hover:text-white flex items-center justify-center transition shrink-0 cursor-pointer disabled:opacity-40"
+              title="Attach Image / Screenshot"
+            >
+              <Paperclip className="w-4 h-4 text-emerald-400 rotate-45" />
+            </button>
+
             <input
               type="text"
               value={newMessage}
@@ -376,18 +521,58 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
                   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
                 }, 100);
               }}
-              placeholder="Type your message to support..."
+              placeholder={selectedImage ? "Add an optional caption..." : "Type your message to support..."}
               className="flex-1 bg-[#2a3942] text-[#d1d7db] text-[16px] sm:text-sm px-3.5 py-2.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder-[#8696a0]"
             />
             <button
               type="submit"
-              disabled={!newMessage.trim() || isLoading}
+              disabled={(!newMessage.trim() && !selectedImage) || isLoading || isUploadingImage}
               className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f72] disabled:opacity-40 text-white flex items-center justify-center transition shadow cursor-pointer shrink-0"
               title="Send Message"
             >
-              <Send className="w-4 h-4" />
+              {isUploadingImage ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Lightbox Modal for previewing images */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200"
+        >
+          <div className="absolute top-4 right-4 flex items-center gap-3">
+            <a
+              href={lightboxImage}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition border border-white/10"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open Original</span>
+            </a>
+            <button
+              type="button"
+              onClick={() => setLightboxImage(null)}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+              title="Close preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="max-w-4xl max-h-[85vh] p-2" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={lightboxImage}
+              alt="Full size preview"
+              className="max-h-[80vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/10"
+            />
+          </div>
         </div>
       )}
     </>
