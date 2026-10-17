@@ -92,9 +92,9 @@ export default function Sidebar({ user }) {
 
   return (
     <>
-      {/* 1. Desktop Sidebar (Sticky full-height on lg screens) */}
-      <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between bg-[#0a0b10] border-r border-white/10 h-screen sticky top-0 text-slate-300 select-none z-20">
-        <div className="flex-1 overflow-y-auto">
+      {/* 1. Desktop Sidebar (Fixed full-height 100vh on lg screens) */}
+      <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between bg-[#0a0b10] border-r border-white/10 h-screen fixed left-0 top-0 bottom-0 text-slate-300 select-none z-30 shadow-2xl">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {/* Brand Header */}
           <div className="p-4 border-b border-white/10 flex items-center shrink-0">
             <Link href="/player/dashboard" className="flex items-center justify-center group">
@@ -155,6 +155,9 @@ export default function Sidebar({ user }) {
           </div>
         </div>
       </aside>
+
+      {/* Desktop spacer to preserve layout flow and prevent content overlap */}
+      <div className="w-64 shrink-0 hidden lg:block pointer-events-none" aria-hidden="true" />
 
       {/* 2. Mobile Responsive Drawer (< lg screens) */}
       {isMobileOpen && (
