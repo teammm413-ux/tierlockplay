@@ -559,6 +559,102 @@ export default function DepositPage() {
                   </div>
                 </div>
 
+                {/* Amount Section: Custom Amount Input */}
+                <div className="bg-[#101117] border border-white/10 focus-within:border-[#FFCC00]/50 rounded-2xl p-5 space-y-3 transition shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Enter Deposit Amount</span>
+                      <span className="text-[#FFCC00] font-black">($2.00 to $100.00+)</span>
+                    </label>
+                    {isUsingCustom && (
+                      <span className="text-[10px] font-black uppercase text-[#FFCC00] bg-[#FFCC00]/10 border border-[#FFCC00]/30 px-2 py-0.5 rounded-full">
+                        Custom Amount Selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative flex items-center border border-white/10 rounded-xl px-4 py-3 focus-within:border-[#FFCC00] bg-[#181922] transition">
+                    <span className="text-[#FFCC00] font-black text-base mr-2">$</span>
+                    <input
+                      type="number"
+                      min="2"
+                      max="1000"
+                      step="any"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      placeholder="Write your custom amount (e.g. 2.00, 15.00, 75.00)"
+                      className="w-full bg-transparent text-white text-[16px] sm:text-sm font-bold focus:outline-none font-mono placeholder:font-normal placeholder-slate-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Minimum deposit amount is <strong className="text-white">$2.00</strong>.
+                  </p>
+                </div>
+
+                {/* Preset Amount Grid */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Or Choose Preset Amount
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+                    {DENOMINATIONS.map((item, idx) => {
+                      const isSelected = !isUsingCustom && selectedIndex === idx;
+                      return (
+                        <div
+                          key={item.credits}
+                          onClick={() => {
+                            setSelectedIndex(idx);
+                            setCustomAmount('');
+                          }}
+                          className={`bg-[#101117] rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-between relative ${
+                            isSelected
+                              ? 'border-2 border-[#FFCC00] shadow-[0_0_25px_rgba(255,204,0,0.15)] ring-1 ring-[#FFCC00]'
+                              : 'border border-white/10 hover:border-white/30'
+                          }`}
+                        >
+                          <span className="font-black text-white text-lg tracking-tight">
+                            ${item.credits}
+                          </span>
+                          <span className="bg-[#181922] text-[#FFCC00] text-[11px] font-bold px-3 py-1 rounded-md mt-2 tracking-wide border border-white/10">
+                            USD {item.usd}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Live Bonus Match Banner (First Deposit vs Regular) */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FFCC00]/15 via-yellow-500/10 to-transparent border border-[#FFCC00]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[0_0_20px_rgba(255,204,0,0.06)]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#FFCC00] text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
+                      <Gift className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-[#FFCC00]">
+                          {bonusInfo?.bonus_title || `Deposit Bonus Match (+${appliedBonusPercent}%)`}
+                        </span>
+                        {bonusInfo?.is_first_deposit && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Welcome Offer
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-300 mt-0.5">
+                        Deposit <span className="font-bold text-white font-mono">${activeAmount}</span> &rarr; Receive <span className="font-bold text-emerald-400 font-mono">+${bonusAmountVal.toFixed(2)} Bonus ({appliedBonusPercent}%)</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right self-stretch sm:self-auto bg-[#181922]/70 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-white/5 flex sm:block justify-between items-center">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Credits to Wallet</span>
+                    <span className="text-base font-black text-[#FFCC00] font-mono">
+                      ${totalCreditedCoins.toFixed(2)} USD
+                    </span>
+                  </div>
+                </div>
+
                 {/* REQUIREMENT: IF CHIME OR PAYPAL SELECTED -> DEDICATED MANUAL DETAILS BOX */}
                 {isCurrentManual && (
                   <div className="bg-[#101117] border border-[#FFCC00]/40 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl animate-in fade-in duration-150">
@@ -572,7 +668,7 @@ export default function DepositPage() {
                             {payUsing} Manual Deposit Instructions
                           </h3>
                           <span className="text-[11px] text-amber-400 font-semibold">
-                            Direct Transfer &amp; Screenshot Verification
+                            Deposit ${activeAmount} &amp; Submit Screenshot Verification
                           </span>
                         </div>
                       </div>
@@ -597,7 +693,7 @@ export default function DepositPage() {
                         <div className="bg-[#181922] p-3.5 rounded-2xl border border-white/10 flex items-center justify-between">
                           <div>
                             <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">
-                              Send Payment To Our {payUsing} Tag:
+                              Send Payment (${activeAmount}) To Our {payUsing} Tag:
                             </span>
                             <span className="font-mono font-black text-white text-base text-[#FFCC00]">
                               {currentManualConfig.account_tag}
@@ -617,7 +713,7 @@ export default function DepositPage() {
                       {/* Instructions */}
                       <p className="text-xs text-slate-300 leading-relaxed bg-white/[0.02] p-3.5 rounded-xl border border-white/5">
                         {currentManualConfig?.instructions ||
-                          `Transfer your deposit amount via ${payUsing}. Once the payment is complete, upload your successful payment screenshot and write your ${payUsing} tag below.`}
+                          `Transfer your deposit amount ($${activeAmount}) via ${payUsing}. Once the payment is complete, upload your successful payment screenshot and write your ${payUsing} tag below.`}
                       </p>
 
                       {/* QR Code / Screenshot image from Admin (if available) */}
@@ -759,102 +855,6 @@ export default function DepositPage() {
                     </div>
                   </div>
                 )}
-
-                {/* Live Bonus Match Banner (First Deposit vs Regular) */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FFCC00]/15 via-yellow-500/10 to-transparent border border-[#FFCC00]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[0_0_20px_rgba(255,204,0,0.06)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#FFCC00] text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
-                      <Gift className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black uppercase tracking-wider text-[#FFCC00]">
-                          {bonusInfo?.bonus_title || `Deposit Bonus Match (+${appliedBonusPercent}%)`}
-                        </span>
-                        {bonusInfo?.is_first_deposit && (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            Welcome Offer
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-300 mt-0.5">
-                        Deposit <span className="font-bold text-white font-mono">${activeAmount}</span> &rarr; Receive <span className="font-bold text-emerald-400 font-mono">+${bonusAmountVal.toFixed(2)} Bonus ({appliedBonusPercent}%)</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right self-stretch sm:self-auto bg-[#181922]/70 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-white/5 flex sm:block justify-between items-center">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Credits to Wallet</span>
-                    <span className="text-base font-black text-[#FFCC00] font-mono">
-                      ${totalCreditedCoins.toFixed(2)} USD
-                    </span>
-                  </div>
-                </div>
-
-                {/* Amount Section: Custom Amount Blank at the TOP */}
-                <div className="bg-[#101117] border border-white/10 focus-within:border-[#FFCC00]/50 rounded-2xl p-5 space-y-3 transition shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>Enter Deposit Amount</span>
-                      <span className="text-[#FFCC00] font-black">($2.00 to $100.00+)</span>
-                    </label>
-                    {isUsingCustom && (
-                      <span className="text-[10px] font-black uppercase text-[#FFCC00] bg-[#FFCC00]/10 border border-[#FFCC00]/30 px-2 py-0.5 rounded-full">
-                        Custom Amount Selected
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative flex items-center border border-white/10 rounded-xl px-4 py-3 focus-within:border-[#FFCC00] bg-[#181922] transition">
-                    <span className="text-[#FFCC00] font-black text-base mr-2">$</span>
-                    <input
-                      type="number"
-                      min="2"
-                      max="1000"
-                      step="any"
-                      value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
-                      placeholder="Write your custom amount (e.g. 2.00, 15.00, 75.00)"
-                      className="w-full bg-transparent text-white text-[16px] sm:text-sm font-bold focus:outline-none font-mono placeholder:font-normal placeholder-slate-500"
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Minimum deposit amount is <strong className="text-white">$2.00</strong>.
-                  </p>
-                </div>
-
-                {/* Or Choose Preset Amount Grid below */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Or Choose Preset Amount
-                    </label>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-                    {DENOMINATIONS.map((item, idx) => {
-                      const isSelected = !isUsingCustom && selectedIndex === idx;
-                      return (
-                        <div
-                          key={item.credits}
-                          onClick={() => {
-                            setSelectedIndex(idx);
-                            setCustomAmount('');
-                          }}
-                          className={`bg-[#101117] rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-between relative ${
-                            isSelected
-                              ? 'border-2 border-[#FFCC00] shadow-[0_0_25px_rgba(255,204,0,0.15)] ring-1 ring-[#FFCC00]'
-                              : 'border border-white/10 hover:border-white/30'
-                          }`}
-                        >
-                          <span className="font-black text-white text-lg tracking-tight">
-                            ${item.credits}
-                          </span>
-                          <span className="bg-[#181922] text-[#FFCC00] text-[11px] font-bold px-3 py-1 rounded-md mt-2 tracking-wide border border-white/10">
-                            USD {item.usd}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
 
               {/* Right Column: Order Details Card */}
