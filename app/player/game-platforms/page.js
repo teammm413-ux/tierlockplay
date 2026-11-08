@@ -25,7 +25,8 @@ import {
   Download,
   Wallet,
   Loader2,
-  UserPlus
+  UserPlus,
+  RefreshCw
 } from 'lucide-react';
 
 export default function GamePlatformsPage() {
@@ -40,6 +41,14 @@ export default function GamePlatformsPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showPasswords, setShowPasswords] = useState({});
   const [copiedItem, setCopiedItem] = useState(null);
+
+  // FastApi Live Balance & Cashout States
+  const [liveBalances, setLiveBalances] = useState({});
+  const [checkingBalance, setCheckingBalance] = useState({});
+  const [cashoutModal, setCashoutModal] = useState(null); // { platform: obj }
+  const [cashoutAmount, setCashoutAmount] = useState('20');
+  const [isCashoutSubmitting, setIsCashoutSubmitting] = useState(false);
+  const [cashoutNotice, setCashoutNotice] = useState({ text: '', isError: false });
 
   const refreshUserData = async () => {
     try {
@@ -172,6 +181,66 @@ export default function GamePlatformsPage() {
       setModalNotice({ text: 'Connection error submitting game load request', isError: true });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const checkLiveBalance = async (platformName) => {
+    setCheckingBalance((prev) => ({ ...prev, [platformName]: true }));
+    try {
+      const res = await fetch('/api/games/balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platformName }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLiveBalances((prev) => ({ ...prev, [platformName]: data.balance }));
+      } else {
+        alert(data.message || 'Could not fetch live balance');
+      }
+    } catch (err) {
+      alert('Connection error checking in-game balance');
+    } finally {
+      setCheckingBalance((prev) => ({ ...prev, [platformName]: false }));
+    }
+  };
+
+  const handleCashoutSubmit = async (e) => {
+    e.preventDefault();
+    if (!cashoutModal || !cashoutModal.platform) return;
+    const amt = parseFloat(cashoutAmount);
+    if (!amt || amt <= 0) {
+      setCashoutNotice({ text: 'Enter a valid cashout amount', isError: true });
+      return;
+    }
+
+    setIsCashoutSubmitting(true);
+    setCashoutNotice({ text: '', isError: false });
+
+    try {
+      const res = await fetch('/api/games/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platformName: cashoutModal.platform.name,
+          gameAccount: cashoutModal.platform.game_username,
+          amount: amt,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCashoutNotice({ text: data.message, isError: false });
+        refreshUserData();
+        loadPlatforms();
+        checkLiveBalance(cashoutModal.platform.name);
+        setTimeout(() => setCashoutModal(null), 2200);
+      } else {
+        setCashoutNotice({ text: data.message || 'Cashout failed', isError: true });
+      }
+    } catch (err) {
+      setCashoutNotice({ text: 'Connection error submitting cashout request', isError: true });
+    } finally {
+      setIsCashoutSubmitting(false);
     }
   };
 
@@ -350,6 +419,28 @@ export default function GamePlatformsPage() {
                         </div>
                       </div>
 
+                      {/* Live In-Game Balance Row for API-integrated platforms (FastApi / Fire Kirin / Juwa 2.0) */}
+                      {(p.isFastApi || p.isFireKirin || p.isJuwa2 || p.isAutoApi) && (
+                        <div className="bg-emerald-950/30 border border-emerald-500/20 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-[#FFCC00]" />
+                            <span className="text-slate-400 text-[11px]">In-Game Balance:</span>
+                            <span className="font-mono font-bold text-emerald-400">
+                              {liveBalances[p.name] !== undefined ? `$${Number(liveBalances[p.name]).toFixed(2)}` : '--'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => checkLiveBalance(p.name)}
+                            disabled={checkingBalance[p.name]}
+                            className="text-[11px] font-bold text-[#FFCC00] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            title="Check live game balance via API"
+                          >
+                            <RefreshCw className={`w-3 h-3 ${checkingBalance[p.name] ? 'animate-spin' : ''}`} />
+                            <span>{checkingBalance[p.name] ? 'Checking...' : 'Refresh'}</span>
+                          </button>
+                        </div>
+                      )}
+
                       {/* Actions */}
                       <div className="flex items-center gap-2 pt-1">
                         <button
@@ -357,8 +448,24 @@ export default function GamePlatformsPage() {
                           className="flex-1 py-2 bg-[#FFCC00] hover:bg-yellow-300 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1"
                         >
                           <Wallet className="w-3.5 h-3.5" />
-                          <span>Load Credits</span>
+                          <span>Load</span>
                         </button>
+
+                        {(p.isFastApi || p.isFireKirin || p.isJuwa2 || p.isAutoApi) && (
+                          <button
+                            onClick={() => {
+                              setCashoutModal({ platform: p });
+                              setCashoutAmount(liveBalances[p.name] ? String(liveBalances[p.name]) : '10');
+                              setCashoutNotice({ text: '', isError: false });
+                            }}
+                            className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1"
+                            title="Cash out winnings directly to website wallet"
+                          >
+                            <ArrowDownLeft className="w-3.5 h-3.5" />
+                            <span>Redeem</span>
+                          </button>
+                        )}
+
                         <a
                           href={p.download_url}
                           target="_blank"
@@ -401,6 +508,21 @@ export default function GamePlatformsPage() {
                       <div className="absolute top-2.5 right-2.5 bg-black/80 backdrop-blur-xs text-[#FFCC00] text-[10px] font-black px-2 py-0.5 rounded-md border border-[#FFCC00]/30">
                         {p.rtp || '97% RTP'}
                       </div>
+                      {(p.isFastApi || p.isFireKirin || p.isJuwa2 || p.isAutoApi) && (
+                        <div className="absolute top-2.5 left-2.5 bg-emerald-950/90 backdrop-blur-xs text-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-md border border-emerald-500/40 flex items-center gap-1 shadow-sm">
+                          <Sparkles className="w-3 h-3 text-[#FFCC00]" />
+                          <span>
+                            {p.api_provider_label ||
+                              (p.isJuwa2
+                                ? 'Juwa2 Auto'
+                                : p.isFireKirin
+                                ? 'FireKirin Auto'
+                                : p.isAgentVault
+                                ? 'AgentVault Auto'
+                                : 'FastApi Auto')}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between mb-1">
@@ -726,6 +848,109 @@ export default function GamePlatformsPage() {
                   </>
                 ) : (
                   <span>Submit Game Load Request (${amountInput || '0'})</span>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CASHOUT / REDEEM MODAL (FastApi Instant Cashout) */}
+      {cashoutModal && cashoutModal.platform && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#101117] border border-emerald-500/40 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                  <ArrowDownLeft className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">
+                    Redeem {cashoutModal.platform.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    FastApi auto cash out directly into your website wallet
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCashoutModal(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {cashoutNotice.text && (
+              <div
+                className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${
+                  cashoutNotice.isError
+                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+                    : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                }`}
+              >
+                {cashoutNotice.isError ? (
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                )}
+                <span>{cashoutNotice.text}</span>
+              </div>
+            )}
+
+            <div className="bg-[#181922] p-4 rounded-2xl border border-white/5 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Game Account:</span>
+                <span className="font-mono font-bold text-white">
+                  {cashoutModal.platform.game_username}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">In-Game Balance:</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {liveBalances[cashoutModal.platform.name] !== undefined
+                    ? `$${Number(liveBalances[cashoutModal.platform.name]).toFixed(2)}`
+                    : 'Real-time verify upon cashout'}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleCashoutSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  Redeem Amount (USD)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={cashoutAmount}
+                    onChange={(e) => setCashoutAmount(e.target.value)}
+                    placeholder="Enter redeem amount"
+                    className="w-full bg-[#181922] border border-white/10 text-white font-mono font-bold text-sm pl-8 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  Note: Please make sure you have exited all active game rounds before redeeming.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isCashoutSubmitting || !cashoutAmount || parseFloat(cashoutAmount) <= 0}
+                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+              >
+                {isCashoutSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Processing Redeem via API...</span>
+                  </>
+                ) : (
+                  <span>Redeem to Wallet (${cashoutAmount || '0'})</span>
                 )}
               </button>
             </form>
