@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, GameTransaction, User, UserGameAccount } from '@/lib/mongodb';
+import { connectToDatabase, GameTransaction, User, UserGameAccount, ChromeNotification } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
