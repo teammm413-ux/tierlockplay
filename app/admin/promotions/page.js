@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import AdminSidebar from '@/components/AdminSidebar';
 import {
   Megaphone,
   Bell,
@@ -86,10 +85,7 @@ export default function AdminPromotionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07080b] text-slate-100 flex font-sans">
-      <AdminSidebar />
-
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 overflow-y-auto pt-16 lg:pt-6">
+    <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div>
@@ -351,7 +347,6 @@ export default function AdminPromotionsPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }

@@ -17,7 +17,7 @@ import {
   Loader2,
   ZoomIn
 } from 'lucide-react';
-import { playNotificationSound } from '@/lib/sound';
+import { playNotificationSound, bindAudioUnlockOnInteraction } from '@/lib/sound';
 
 export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
@@ -119,7 +119,7 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
 
   const loadMessages = async () => {
     try {
-      const res = await fetch('/api/chat/messages');
+      const res = await fetch(`/api/chat/messages?_=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
         setMessages(data.messages || []);
@@ -132,15 +132,16 @@ export default function WhatsAppChat({ isOpen: controlledIsOpen, onClose, user }
   };
 
   useEffect(() => {
+    bindAudioUnlockOnInteraction();
     checkUnread();
-    const interval = setInterval(checkUnread, 4000);
+    const interval = setInterval(checkUnread, 1200);
     return () => clearInterval(interval);
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
       loadMessages();
-      const interval = setInterval(loadMessages, 2000);
+      const interval = setInterval(loadMessages, 900);
       return () => clearInterval(interval);
     }
   }, [isOpen]);

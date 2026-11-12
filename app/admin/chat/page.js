@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import AdminSidebar from '@/components/AdminSidebar';
-import { playNotificationSound } from '@/lib/sound';
+import { playNotificationSound, bindAudioUnlockOnInteraction } from '@/lib/sound';
 import {
   MessageSquare,
   Search,
@@ -41,15 +40,22 @@ function AdminChatContent() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
   const messagesEndRef = useRef(null);
   const lastActiveMsgIdRef = useRef(null);
   const fileInputRef = useRef(null);
+  const messagesAbortRef = useRef(null);
+  const selectedUserIdRef = useRef(selectedUserId);
+
+  useEffect(() => {
+    selectedUserIdRef.current = selectedUserId;
+  }, [selectedUserId]);
 
   // Load conversations list with search
   const loadConversations = async () => {
     try {
-      const url = `/api/admin/chat?search=${encodeURIComponent(searchQuery)}`;
-      const res = await fetch(url);
+      const url = `/api/admin/chat?search=${encodeURIComponent(searchQuery)}&_=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
         setConversations(data.conversations || []);
@@ -67,11 +73,25 @@ function AdminChatContent() {
   };
 
   // Load messages for selected user
-  const loadMessages = async (userId) => {
+  const loadMessages = async (userId, { showLoading = false } = {}) => {
     if (!userId) return;
+    if (messagesAbortRef.current) {
+      messagesAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    messagesAbortRef.current = controller;
+    const requestedId = String(userId);
+
+    if (showLoading) setIsLoadingThread(true);
+
     try {
-      const res = await fetch(`/api/admin/chat?userId=${userId}`);
+      const res = await fetch(`/api/admin/chat?userId=${encodeURIComponent(userId)}&_=${Date.now()}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
       const data = await res.json();
+      if (String(selectedUserIdRef.current) !== requestedId) return;
+
       if (data.success) {
         const msgs = data.messages || [];
         if (msgs.length > 0) {
@@ -84,29 +104,45 @@ function AdminChatContent() {
             playNotificationSound('admin_request');
           }
           lastActiveMsgIdRef.current = lastMsg.id;
+        } else {
+          lastActiveMsgIdRef.current = null;
         }
         setMessages(msgs);
         setActiveUser(data.user || null);
       }
-    } catch (err) {}
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        console.error(err);
+      }
+    } finally {
+      if (String(selectedUserIdRef.current) === requestedId) {
+        setIsLoadingThread(false);
+      }
+    }
   };
 
   useEffect(() => {
+    bindAudioUnlockOnInteraction();
     loadConversations();
-    const interval = setInterval(loadConversations, 3000);
+    const interval = setInterval(loadConversations, 1200);
     return () => clearInterval(interval);
   }, [searchQuery]);
 
   useEffect(() => {
     lastActiveMsgIdRef.current = null;
     if (selectedUserId) {
-      loadMessages(selectedUserId);
-      const interval = setInterval(() => loadMessages(selectedUserId), 3000);
-      return () => clearInterval(interval);
-    } else {
-      setActiveUser(null);
       setMessages([]);
+      setActiveUser(null);
+      loadMessages(selectedUserId, { showLoading: true });
+      const interval = setInterval(() => loadMessages(selectedUserId, { showLoading: false }), 800);
+      return () => {
+        clearInterval(interval);
+        if (messagesAbortRef.current) messagesAbortRef.current.abort();
+      };
     }
+    setActiveUser(null);
+    setMessages([]);
+    setIsLoadingThread(false);
   }, [selectedUserId]);
 
   useEffect(() => {
@@ -222,10 +258,8 @@ function AdminChatContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07080b] text-slate-100 flex font-sans">
-      <AdminSidebar />
-
-      <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto flex flex-col h-screen overflow-hidden pt-16 lg:pt-6">
+    <>
+      <main className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto flex flex-col h-[calc(100dvh-4rem)] lg:h-screen overflow-hidden">
         {/* Top Header */}
         <div className="pb-3 border-b border-white/10 shrink-0 flex items-center justify-between">
           <div>
@@ -371,7 +405,12 @@ function AdminChatContent() {
                     </span>
                   </div>
 
-                  {messages.length === 0 ? (
+                  {isLoadingThread ? (
+                    <div className="text-center py-16 text-slate-400 text-xs space-y-2">
+                      <Loader2 className="w-8 h-8 text-[#FFCC00] mx-auto animate-spin" />
+                      <p>Loading conversation…</p>
+                    </div>
+                  ) : messages.length === 0 ? (
                     <div className="text-center py-16 text-slate-500 text-xs space-y-2">
                       <Sparkles className="w-8 h-8 text-[#FFCC00]/40 mx-auto" />
                       <p>No messages yet in this conversation.</p>
@@ -573,7 +612,7 @@ function AdminChatContent() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

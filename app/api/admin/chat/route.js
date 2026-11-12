@@ -65,48 +65,107 @@ export async function GET(request) {
       });
     }
 
-    // 2. Listing users / Searching by username or email
-    const userFilter = {};
-    if (search.trim()) {
-      userFilter.$or = [
-        { username: new RegExp(search.trim(), 'i') },
-        { email: new RegExp(search.trim(), 'i') }
-      ];
-    }
+    // 2. Conversation list — single aggregation (fast; no N+1 queries)
+    const searchTrim = search.trim();
+    let searchUserIds = null;
 
-    const users = await User.find(userFilter);
-    const conversations = [];
-
-    for (const u of users) {
-      const uId = u._id.toString();
-      const lastMsg = await ChatMessage.findOne({ user_id: uId }).sort({ created_at: -1 });
-      const unreadCount = await ChatMessage.countDocuments({
-        user_id: uId,
-        sender_type: 'user',
-        is_read_by_admin: false,
-      });
-
-      conversations.push({
-        id: uId,
-        _id: uId,
-        username: u.username,
-        email: u.email,
-        phone: u.phone || '',
-        wallet_balance: u.wallet_balance || 0,
-        account_status: u.account_status || 'Active',
-        last_message: lastMsg ? (lastMsg.message || (lastMsg.attachment_url ? '📷 [Photo Attachment]' : '')) : '',
-        last_message_time: lastMsg ? lastMsg.created_at : '',
-        unread_count: unreadCount,
-      });
-    }
-
-    conversations.sort((a, b) => {
-      if (b.unread_count !== a.unread_count) return b.unread_count - a.unread_count;
-      if (b.last_message_time && a.last_message_time) {
-        return new Date(b.last_message_time) - new Date(a.last_message_time);
+    if (searchTrim) {
+      const matched = await User.find({
+        $or: [
+          { username: new RegExp(searchTrim, 'i') },
+          { email: new RegExp(searchTrim, 'i') },
+        ],
+      })
+        .select('_id')
+        .limit(200);
+      searchUserIds = matched.map((u) => u._id.toString());
+      if (searchUserIds.length === 0) {
+        return NextResponse.json({ success: true, conversations: [] });
       }
-      return 0;
-    });
+    }
+
+    const pipeline = [
+      ...(searchUserIds ? [{ $match: { user_id: { $in: searchUserIds } } }] : []),
+      { $sort: { created_at: -1 } },
+      {
+        $group: {
+          _id: '$user_id',
+          last_message: { $first: '$message' },
+          last_attachment_url: { $first: '$attachment_url' },
+          last_message_time: { $first: '$created_at' },
+          unread_count: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$sender_type', 'user'] },
+                    { $ne: ['$is_read_by_admin', true] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+      { $sort: { unread_count: -1, last_message_time: -1 } },
+      { $limit: 150 },
+    ];
+
+    const grouped = await ChatMessage.aggregate(pipeline);
+    const userIds = grouped.map((g) => g._id);
+    const users = await User.find({ _id: { $in: userIds } }).select(
+      'username email phone wallet_balance account_status'
+    );
+    const userById = {};
+    for (const u of users) {
+      userById[u._id.toString()] = u;
+    }
+
+    const conversations = grouped
+      .map((g) => {
+        const u = userById[g._id];
+        if (!u) return null;
+        const lastText =
+          g.last_message ||
+          (g.last_attachment_url ? '📷 [Photo Attachment]' : '');
+        return {
+          id: g._id,
+          _id: g._id,
+          username: u.username,
+          email: u.email,
+          phone: u.phone || '',
+          wallet_balance: u.wallet_balance || 0,
+          account_status: u.account_status || 'Active',
+          last_message: lastText,
+          last_message_time: g.last_message_time || '',
+          unread_count: g.unread_count || 0,
+        };
+      })
+      .filter(Boolean);
+
+    // Search: include matched players with no chat yet
+    if (searchUserIds) {
+      const inList = new Set(conversations.map((c) => c.id));
+      const extras = await User.find({ _id: { $in: searchUserIds.filter((id) => !inList.has(id)) } })
+        .select('username email phone wallet_balance account_status')
+        .limit(50);
+      for (const u of extras) {
+        conversations.push({
+          id: u._id.toString(),
+          _id: u._id.toString(),
+          username: u.username,
+          email: u.email,
+          phone: u.phone || '',
+          wallet_balance: u.wallet_balance || 0,
+          account_status: u.account_status || 'Active',
+          last_message: '',
+          last_message_time: '',
+          unread_count: 0,
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, conversations });
   } catch (error) {

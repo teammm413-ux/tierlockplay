@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import AdminSidebar from '@/components/AdminSidebar';
 import {
   Users,
   Search,
@@ -181,10 +180,8 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07080b] text-slate-100 flex font-sans">
-      <AdminSidebar />
-
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 overflow-y-auto pt-16 lg:pt-6">
+    <>
+    <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
@@ -413,7 +410,7 @@ export default function AdminUsersPage() {
         </div>
       </main>
 
-      {/* Adjust Balance Modal */}
+      {/* Adjust Balance Modal — portaled layout below main */}
       {balanceModalUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-[#101117] border border-white/10 rounded-2xl p-6 shadow-2xl">
@@ -799,6 +796,6 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

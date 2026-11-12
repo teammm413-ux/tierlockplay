@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Logo from './Logo';
-import { playNotificationSound } from '@/lib/sound';
+import { playNotificationSound, bindAudioUnlockOnInteraction } from '@/lib/sound';
 import {
   LayoutDashboard,
   ArrowDownLeft,
@@ -24,7 +24,8 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const prevTotalRef = useRef(null);
+  const prevOpsRef = useRef(null);
+  const prevChatRef = useRef(null);
   const [stats, setStats] = useState({
     pendingDeposits: 0,
     pendingWithdrawals: 0,
@@ -33,22 +34,27 @@ export default function AdminSidebar() {
   });
 
   useEffect(() => {
+    bindAudioUnlockOnInteraction();
+
     const fetchCounters = async () => {
       try {
-        const res = await fetch('/api/admin/stats');
+        const res = await fetch('/api/admin/stats', { cache: 'no-store' });
         const data = await res.json();
         if (data.success && data.stats) {
           const deposits = data.stats.pendingDepositsCount || 0;
           const withdrawals = data.stats.pendingWithdrawalsCount || 0;
           const games = data.stats.pendingGameTransactionsCount || 0;
           const chat = data.stats.unreadChatMessages || 0;
-          const currentTotal = deposits + withdrawals + games + chat;
+          const opsTotal = deposits + withdrawals + games;
 
-          // Play crisp casino alert sound whenever a new request or message arrives
-          if (prevTotalRef.current !== null && currentTotal > prevTotalRef.current) {
+          if (prevOpsRef.current !== null && opsTotal > prevOpsRef.current) {
             playNotificationSound('admin_request');
           }
-          prevTotalRef.current = currentTotal;
+          if (prevChatRef.current !== null && chat > prevChatRef.current) {
+            playNotificationSound('admin_request');
+          }
+          prevOpsRef.current = opsTotal;
+          prevChatRef.current = chat;
 
           setStats({
             pendingDeposits: deposits,
@@ -63,8 +69,7 @@ export default function AdminSidebar() {
     };
 
     fetchCounters();
-    // Fast real-time polling every 4 seconds so badges and alerts update live
-    const interval = setInterval(fetchCounters, 4000);
+    const interval = setInterval(fetchCounters, 1500);
     return () => clearInterval(interval);
   }, []);
 
@@ -223,8 +228,8 @@ export default function AdminSidebar() {
         </div>
       </div>
 
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 bg-[#0c0d12] border-r border-white/10 min-h-screen p-4 flex-col justify-between shadow-2xl">
+      {/* Desktop Sidebar — fixed; main content scrolls independently */}
+      <aside className="hidden lg:flex fixed left-0 top-0 z-30 w-64 h-screen bg-[#0c0d12] border-r border-white/10 p-4 flex-col justify-between shadow-2xl overflow-y-auto">
         {sidebarContent}
       </aside>
 
