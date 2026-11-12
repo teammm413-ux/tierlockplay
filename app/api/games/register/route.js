@@ -3,12 +3,8 @@ import { connectToDatabase, User, GameTransaction, UserGameAccount, GamePlatform
 import { getSessionFromRequest } from '@/lib/auth';
 import { isFastApiPlatform, fastApiCreatePlayer, generateGamePassword } from '@/lib/fastapi';
 import { isFireKirinPlatform, fireKirinRegisterPlayer, sanitizeFireKirinAccount } from '@/lib/firekirin';
-import { isJuwa2Platform, juwa2AddUser, sanitizeJuwa2Account } from '@/lib/juwa2';
-import {
-  isAgentVaultPlatform,
-  agentVaultInsertPlayer,
-  sanitizeAgentVaultUsername,
-} from '@/lib/agentvault';
+import { isJuwaExternalPlatform, juwaExternalAddUser } from '@/lib/juwaExternal';
+import { buildJuwaAccountName } from '@/lib/gameJuwaIntegration';
 
 function generateOrderNo(prefix = 'REG') {
   const d = new Date();
@@ -290,19 +286,15 @@ export async function POST(request) {
       }
     }
 
-    // 5. Juwa 2.0 Integration: Check if this platform is Juwa 2.0
-    if (isJuwa2Platform(platform.name)) {
-      const sanitizedUsername = (user.username || 'user')
-        .replace(/[^a-zA-Z0-9]/g, '')
-        .toLowerCase()
-        .slice(0, 8);
-      const randomSuffix = Math.floor(100 + Math.random() * 900);
-      const rawAccount = sanitizeJuwa2Account(`j2_${sanitizedUsername}${randomSuffix}`);
+    // 5. Juwa-family API (Juwa, Juwa2.0, Vegas Sweeps, Game Vault)
+    if (isJuwaExternalPlatform(platform.name)) {
+      const rawAccount = buildJuwaAccountName(user.username, platform.name);
       const generatedPassword = generateGamePassword();
 
-      console.log(`[Juwa2.0 Auto-Register] Attempting auto account creation for ${user.username} on ${platform.name} (${rawAccount})`);
+      console.log(`[Juwa API Auto-Register] ${user.username} on ${platform.name} (${rawAccount})`);
 
-      const apiRes = await juwa2AddUser({
+      const apiRes = await juwaExternalAddUser({
+        platformName: platform.name,
         account: rawAccount,
         password: generatedPassword,
       });
@@ -337,11 +329,11 @@ export async function POST(request) {
           game_password: generatedPassword,
           amount: 0,
           status: 'Approved',
-          api_dispatch_status: 'Juwa2',
-          in_game_tx_id: `JUWA2_ID_${apiRes.userId}`,
+          api_dispatch_status: 'JuwaAPI',
+          in_game_tx_id: `JUWA_ID_${apiRes.userId}`,
           wallet_balance_before: user.wallet_balance || 0,
           wallet_balance_after: user.wallet_balance || 0,
-          admin_notes: `Auto-registered instantly via Juwa 2.0 API (${platform.name}, UserID: ${apiRes.userId})`,
+          admin_notes: `Auto-registered via Juwa External API (${platform.name}, UserID: ${apiRes.userId})`,
           created_at: new Date(),
         });
 
@@ -356,7 +348,7 @@ export async function POST(request) {
           status: 'Approved',
         });
       } else {
-        console.warn(`[Juwa2.0 Auto-Register] API call returned error: ${apiRes.message} (Code: ${apiRes.code}). Falling back to manual admin queue.`);
+        console.warn(`[Juwa API Auto-Register] ${apiRes.message} (Code: ${apiRes.code}). Manual queue.`);
 
         const isWhitelist = apiRes.code === 5 || apiRes.code === -1;
         const tx = await GameTransaction.create({
@@ -374,7 +366,7 @@ export async function POST(request) {
           failure_reason: apiRes.message,
           wallet_balance_before: user.wallet_balance || 0,
           wallet_balance_after: user.wallet_balance || 0,
-          admin_notes: `Juwa 2.0 registration logged (${apiRes.message}). Awaiting provider whitelist on 179.236.244.219 or admin action.`,
+          admin_notes: `Juwa API registration (${apiRes.message}). Whitelist 179.236.244.219 or admin action.`,
           created_at: new Date(),
         });
 
@@ -392,101 +384,7 @@ export async function POST(request) {
       }
     }
 
-    // 6. Agent Vault Integration (Cash Frenzy, Cash Machine, Lucky Stars, Mafia, Mr All In One, Noble, Vegas Roll)
-    if (isAgentVaultPlatform(platform.name)) {
-      const sanitizedUsername = (user.username || 'user')
-        .replace(/[^a-zA-Z0-9]/g, '')
-        .toLowerCase()
-        .slice(0, 6);
-      const randomSuffix = Math.floor(100 + Math.random() * 900);
-      const rawAccount = sanitizeAgentVaultUsername(`${sanitizedUsername}${randomSuffix}`);
-      const generatedPassword = generateGamePassword();
-
-      console.log(`[AgentVault Auto-Register] Creating account for ${user.username} on ${platform.name} (${rawAccount})`);
-
-      const apiRes = await agentVaultInsertPlayer({
-        platformName: platform.name,
-        username: rawAccount,
-        password: generatedPassword,
-      });
-
-      if (apiRes.success) {
-        await UserGameAccount.findOneAndUpdate(
-          { user_id: user._id.toString(), platform_name: platform.name },
-          {
-            user_id: user._id.toString(),
-            username: user.username,
-            platform_id: platform._id.toString(),
-            platform_name: platform.name,
-            in_game_account_id: apiRes.playerId,
-            game_username: apiRes.account || rawAccount,
-            game_password: generatedPassword,
-            status: 'Active',
-            updated_at: new Date(),
-          },
-          { upsert: true, new: true }
-        );
-
-        await GameTransaction.create({
-          order_no: orderNo,
-          user_id: user._id.toString(),
-          username: user.username,
-          type: 'Register',
-          platform_name: platform.name,
-          game_account: apiRes.account || rawAccount,
-          game_username: apiRes.account || rawAccount,
-          game_password: generatedPassword,
-          amount: 0,
-          status: 'Approved',
-          api_dispatch_status: 'AgentVault',
-          in_game_tx_id: `AV_ID_${apiRes.playerId}`,
-          wallet_balance_before: user.wallet_balance || 0,
-          wallet_balance_after: user.wallet_balance || 0,
-          admin_notes: `Auto-registered via Agent Vault API (${platform.name}, PlayerID: ${apiRes.playerId})`,
-          created_at: new Date(),
-        });
-
-        return NextResponse.json({
-          success: true,
-          isAutoApproved: true,
-          message: `Your ${platform.name} game account was created instantly! Use your username & password to log in.`,
-          orderNo,
-          platformName: platform.name,
-          game_username: apiRes.account || rawAccount,
-          game_password: generatedPassword,
-          status: 'Approved',
-        });
-      }
-
-      const tx = await GameTransaction.create({
-        order_no: orderNo,
-        user_id: user._id.toString(),
-        username: user.username,
-        type: 'Register',
-        platform_name: platform.name,
-        game_account: '',
-        game_username: '',
-        game_password: '',
-        amount: 0,
-        status: 'Pending',
-        api_dispatch_status: 'Manual',
-        failure_reason: apiRes.message,
-        wallet_balance_before: user.wallet_balance || 0,
-        wallet_balance_after: user.wallet_balance || 0,
-        admin_notes: `Agent Vault registration failed (${apiRes.message}). Check agent credentials in .env.local on VPS.`,
-        created_at: new Date(),
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: `Account creation request submitted for ${platform.name}! Admin will provide credentials if API credentials are not yet configured.`,
-        orderNo: tx.order_no,
-        platformName: tx.platform_name,
-        status: 'Pending',
-      });
-    }
-
-    // 7. Default flow for manual platforms (Original Juwa, Orion Star, Panda Master, etc.)
+    // 6. Manual platforms (Orion Star, Panda Master, Ultra Panda, etc.)
     const tx = await GameTransaction.create({
       order_no: orderNo,
       user_id: user._id.toString(),

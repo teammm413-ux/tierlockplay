@@ -3,13 +3,8 @@ import { connectToDatabase, User, GameTransaction, UserGameAccount, GamePlatform
 import { getSessionFromRequest } from '@/lib/auth';
 import { isFastApiPlatform, fastApiDeposit, fastApiCreatePlayer, generateGamePassword } from '@/lib/fastapi';
 import { isFireKirinPlatform, fireKirinRecharge, fireKirinRegisterPlayer, sanitizeFireKirinAccount } from '@/lib/firekirin';
-import { isJuwa2Platform, juwa2Recharge, juwa2AddUser, sanitizeJuwa2Account } from '@/lib/juwa2';
-import {
-  isAgentVaultPlatform,
-  agentVaultInsertPlayer,
-  agentVaultRecharge,
-  sanitizeAgentVaultUsername,
-} from '@/lib/agentvault';
+import { isJuwaExternalPlatform, juwaExternalRecharge, juwaExternalAddUser } from '@/lib/juwaExternal';
+import { buildJuwaAccountName } from '@/lib/gameJuwaIntegration';
 
 function generateOrderNo(prefix = 'GDP') {
   const d = new Date();
@@ -334,17 +329,14 @@ export async function POST(request) {
       }
     }
 
-    // 6. Juwa 2.0 Automated Coin Loading (Recharge)
-    if (isJuwa2Platform(platform.name)) {
-      // If user doesn't have an in-game account yet, auto-create one first!
+    // 6. Juwa-family API (Juwa, Juwa2.0, Vegas Sweeps, Game Vault)
+    if (isJuwaExternalPlatform(platform.name)) {
       if (!existingAccount || !existingAccount.in_game_account_id) {
-        const sanitizedUsername = (user.username || 'user').replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 8);
-        const randomSuffix = Math.floor(100 + Math.random() * 900);
-        const rawAccount = sanitizeJuwa2Account(`j2_${sanitizedUsername}${randomSuffix}`);
+        const rawAccount = buildJuwaAccountName(user.username, platform.name);
         const generatedPassword = generateGamePassword();
 
-        console.log(`[Juwa2.0 Auto-Deposit] Auto-creating account for ${user.username} prior to deposit on ${platform.name}`);
-        const createRes = await juwa2AddUser({
+        const createRes = await juwaExternalAddUser({
+          platformName: platform.name,
           account: rawAccount,
           password: generatedPassword,
         });
@@ -373,7 +365,8 @@ export async function POST(request) {
         const targetUserId = existingAccount.in_game_account_id;
         console.log(`[Juwa2.0 Deposit] Transferring $${parsedAmount} to user_id: ${targetUserId} on ${platform.name}`);
 
-        const apiRes = await juwa2Recharge({
+        const apiRes = await juwaExternalRecharge({
+          platformName: platform.name,
           userId: targetUserId,
           amount: parsedAmount,
           orderId: orderNo,
@@ -402,25 +395,25 @@ export async function POST(request) {
             game_password: existingAccount.game_password || '',
             amount: parsedAmount,
             status: 'Approved',
-            api_dispatch_status: 'Juwa2',
+            api_dispatch_status: 'JuwaAPI',
             in_game_tx_id: String(apiRes.transactionId || apiRes.payOrderId || ''),
             wallet_balance_before: balanceBefore,
             wallet_balance_after: balanceAfter,
-            admin_notes: `Loaded automatically via Juwa 2.0 API (${platform.name}, Order #${apiRes.transactionId || 'N/A'})`,
+            admin_notes: `Loaded via Juwa External API (${platform.name}, Order #${apiRes.transactionId || 'N/A'})`,
             created_at: new Date(),
           });
 
           return NextResponse.json({
             success: true,
             isAutoApproved: true,
-            message: `Deposit successful! $${parsedAmount.toFixed(2)} loaded directly into your Juwa 2.0 account!`,
+            message: `Deposit successful! $${parsedAmount.toFixed(2)} loaded directly into your ${platform.name} account!`,
             orderNo: tx.order_no,
             amount: parsedAmount,
             newBalance: balanceAfter,
             status: 'Approved',
           });
         } else {
-          console.warn(`[Juwa2.0 Deposit Error] ${apiRes.message} (Code: ${apiRes.code}). Queueing for admin.`);
+          console.warn(`[Juwa API Deposit Error] ${apiRes.message} (Code: ${apiRes.code}). Queueing for admin.`);
           const isWhitelist = apiRes.code === 5 || apiRes.code === -1;
           const tx = await GameTransaction.create({
             order_no: orderNo,
@@ -437,7 +430,7 @@ export async function POST(request) {
             failure_reason: apiRes.message,
             wallet_balance_before: user.wallet_balance,
             wallet_balance_after: user.wallet_balance,
-            admin_notes: `Juwa 2.0 deposit attempt logged: ${apiRes.message}. Fallback to manual admin review.`,
+            admin_notes: `Juwa API deposit failed: ${apiRes.message}`,
             created_at: new Date(),
           });
 
@@ -456,117 +449,7 @@ export async function POST(request) {
       }
     }
 
-    // 7. Agent Vault Automated Coin Loading
-    if (isAgentVaultPlatform(platform.name)) {
-      if (!existingAccount || !existingAccount.in_game_account_id) {
-        const sanitizedUsername = (user.username || 'user').replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 6);
-        const randomSuffix = Math.floor(100 + Math.random() * 900);
-        const rawAccount = sanitizeAgentVaultUsername(`${sanitizedUsername}${randomSuffix}`);
-        const generatedPassword = generateGamePassword();
-
-        const createRes = await agentVaultInsertPlayer({
-          platformName: platform.name,
-          username: rawAccount,
-          password: generatedPassword,
-        });
-
-        if (createRes.success) {
-          existingAccount = await UserGameAccount.findOneAndUpdate(
-            { user_id: user._id.toString(), platform_name: platform.name },
-            {
-              user_id: user._id.toString(),
-              username: user.username,
-              platform_id: platform._id.toString(),
-              platform_name: platform.name,
-              in_game_account_id: createRes.playerId,
-              game_username: createRes.account || rawAccount,
-              game_password: generatedPassword,
-              status: 'Active',
-              updated_at: new Date(),
-            },
-            { upsert: true, new: true }
-          );
-        }
-      }
-
-      if (existingAccount && existingAccount.in_game_account_id) {
-        const playerId = existingAccount.in_game_account_id;
-        const apiRes = await agentVaultRecharge({
-          platformName: platform.name,
-          playerId,
-          amount: parsedAmount,
-          remark: orderNo,
-        });
-
-        if (apiRes.success) {
-          const balanceBefore = user.wallet_balance;
-          const balanceAfter = parseFloat((balanceBefore - parsedAmount).toFixed(2));
-          user.wallet_balance = balanceAfter;
-          await user.save();
-
-          existingAccount.total_loaded = parseFloat(((existingAccount.total_loaded || 0) + parsedAmount).toFixed(2));
-          await existingAccount.save();
-
-          const tx = await GameTransaction.create({
-            order_no: orderNo,
-            user_id: user._id.toString(),
-            username: user.username,
-            type: 'Deposit',
-            platform_name: platform.name,
-            game_account: existingAccount.game_username || playerId,
-            game_username: existingAccount.game_username || playerId,
-            game_password: existingAccount.game_password || '',
-            amount: parsedAmount,
-            status: 'Approved',
-            api_dispatch_status: 'AgentVault',
-            in_game_tx_id: `AV_LOAD_${playerId}`,
-            wallet_balance_before: balanceBefore,
-            wallet_balance_after: balanceAfter,
-            admin_notes: `Loaded automatically via Agent Vault API (${platform.name})`,
-            created_at: new Date(),
-          });
-
-          return NextResponse.json({
-            success: true,
-            isAutoApproved: true,
-            message: `Deposit successful! $${parsedAmount.toFixed(2)} loaded directly into your ${platform.name} account!`,
-            orderNo: tx.order_no,
-            amount: parsedAmount,
-            newBalance: balanceAfter,
-            status: 'Approved',
-          });
-        }
-
-        const tx = await GameTransaction.create({
-          order_no: orderNo,
-          user_id: user._id.toString(),
-          username: user.username,
-          type: 'Deposit',
-          platform_name: platform.name,
-          game_account: existingAccount?.game_username || '',
-          game_username: existingAccount?.game_username || '',
-          game_password: existingAccount?.game_password || '',
-          amount: parsedAmount,
-          status: 'Pending',
-          api_dispatch_status: 'Manual',
-          failure_reason: apiRes.message,
-          wallet_balance_before: user.wallet_balance,
-          wallet_balance_after: user.wallet_balance,
-          admin_notes: `Agent Vault deposit failed: ${apiRes.message}`,
-          created_at: new Date(),
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: `Deposit request submitted! Admin will credit your account shortly. (${apiRes.message})`,
-          orderNo: tx.order_no,
-          amount: parsedAmount,
-          status: 'Pending',
-        });
-      }
-    }
-
-    // 8. Default flow for manual platforms (Original Juwa, Orion Star, etc.)
+    // 7. Manual platforms
     const tx = await GameTransaction.create({
       order_no: orderNo,
       user_id: user._id.toString(),

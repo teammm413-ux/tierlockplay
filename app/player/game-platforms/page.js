@@ -513,13 +513,7 @@ export default function GamePlatformsPage() {
                           <Sparkles className="w-3 h-3 text-[#FFCC00]" />
                           <span>
                             {p.api_provider_label ||
-                              (p.isJuwa2
-                                ? 'Juwa2 Auto'
-                                : p.isFireKirin
-                                ? 'FireKirin Auto'
-                                : p.isAgentVault
-                                ? 'AgentVault Auto'
-                                : 'FastApi Auto')}
+                              (p.isFireKirin ? 'Fire Kirin Auto' : p.isJuwaExternal ? 'Juwa API Auto' : 'FastApi Auto')}
                           </span>
                         </div>
                       )}

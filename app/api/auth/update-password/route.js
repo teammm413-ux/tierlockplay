@@ -18,14 +18,11 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'New password must be at least 6 characters' }, { status: 400 });
     }
 
-    let user = null;
-    if (session && session.id) {
-      user = await User.findById(session.id);
-    }
-    if (!user) {
-      user = await User.findOne({ username: 'alex' }) || await User.findOne({});
+    if (!session || !session.id) {
+      return NextResponse.json({ success: false, message: 'Please sign in to change your password' }, { status: 401 });
     }
 
+    const user = await User.findById(session.id);
     if (!user) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
     }

@@ -3,8 +3,7 @@ import { connectToDatabase, User, UserGameAccount } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 import { isFastApiPlatform, fastApiGetBalance } from '@/lib/fastapi';
 import { isFireKirinPlatform, fireKirinGetBalance } from '@/lib/firekirin';
-import { isJuwa2Platform, juwa2GetUserBalance } from '@/lib/juwa2';
-import { isAgentVaultPlatform, agentVaultGetScore } from '@/lib/agentvault';
+import { isJuwaExternalPlatform, juwaExternalGetUserBalance } from '@/lib/juwaExternal';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,11 +23,10 @@ export async function POST(request) {
     }
 
     const isFK = isFireKirinPlatform(platformName);
-    const isJ2 = isJuwa2Platform(platformName);
+    const isJuwa = isJuwaExternalPlatform(platformName);
     const isFast = isFastApiPlatform(platformName);
-    const isAV = isAgentVaultPlatform(platformName);
 
-    if (!isFast && !isFK && !isJ2 && !isAV) {
+    if (!isFast && !isFK && !isJuwa) {
       return NextResponse.json({
         success: false,
         message: `${platformName} does not support live API balance check.`,
@@ -52,31 +50,9 @@ export async function POST(request) {
 
     const targetAccount = account.in_game_account_id;
 
-    if (isAV) {
-      const res = await agentVaultGetScore({
+    if (isJuwa) {
+      const res = await juwaExternalGetUserBalance({
         platformName,
-        playerId: targetAccount,
-      });
-
-      if (res.success) {
-        return NextResponse.json({
-          success: true,
-          balance: res.balance,
-          platformName,
-          account: account.game_username || targetAccount,
-          isInGame: res.isInGame,
-        });
-      }
-
-      return NextResponse.json({
-        success: false,
-        code: res.code,
-        message: res.message || 'Failed to fetch in-game balance.',
-      }, { status: 400 });
-    }
-
-    if (isJ2) {
-      const res = await juwa2GetUserBalance({
         userId: targetAccount,
       });
 
@@ -92,7 +68,7 @@ export async function POST(request) {
       return NextResponse.json({
         success: false,
         code: res.code,
-        message: res.message || 'Failed to fetch Juwa 2.0 in-game balance.',
+        message: res.message || 'Failed to fetch in-game balance.',
       }, { status: 400 });
     }
 

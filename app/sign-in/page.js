@@ -199,7 +199,7 @@ export default function SignInPage() {
             {/* Links */}
             <div className="text-center space-y-1.5 pt-1.5">
               <Link
-                href="/player/settings"
+                href="/forgot-password"
                 className="text-[11px] sm:text-xs text-yellow-400 hover:text-yellow-300 font-medium block transition-colors"
               >
                 Forgot your password?

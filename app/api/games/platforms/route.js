@@ -3,8 +3,7 @@ import { connectToDatabase, GamePlatform, UserGameAccount, GameTransaction } fro
 import { getSessionFromRequest } from '@/lib/auth';
 import { isFastApiPlatform } from '@/lib/fastapi';
 import { isFireKirinPlatform } from '@/lib/firekirin';
-import { isJuwa2Platform } from '@/lib/juwa2';
-import { isAgentVaultPlatform } from '@/lib/agentvault';
+import { isJuwaExternalPlatform } from '@/lib/juwaExternal';
 import { getGameApiProvider, getGameApiProviderLabel, isAutoGamePlatform } from '@/lib/gameProviders';
 
 export const dynamic = 'force-dynamic';
@@ -83,8 +82,8 @@ export async function GET(request) {
         // API Integration details
         isFastApi: isFastApiPlatform(p.name),
         isFireKirin: isFireKirinPlatform(p.name),
-        isJuwa2: isJuwa2Platform(p.name),
-        isAgentVault: isAgentVaultPlatform(p.name),
+        isJuwa2: isJuwaExternalPlatform(p.name) && /juwa\s*2/i.test(p.name),
+        isJuwaExternal: isJuwaExternalPlatform(p.name),
         isAutoApi: isAutoGamePlatform(p.name),
         api_provider: getGameApiProvider(p.name),
         api_provider_label: getGameApiProviderLabel(p.name),
