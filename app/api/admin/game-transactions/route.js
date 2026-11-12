@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, GameTransaction, User, UserGameAccount, ChromeNotification } from '@/lib/mongodb';
+import {
+  connectToDatabase,
+  GameTransaction,
+  User,
+  UserGameAccount,
+  GamePlatform,
+  ChromeNotification,
+} from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -155,28 +162,38 @@ export async function POST(request) {
       await tx.save();
 
       // 3. Upsert into UserGameAccount (permanent credentials for player)
+      const platform = await GamePlatform.findOne({ name: tx.platform_name });
+      const platformId = platform?._id?.toString() || '';
+
       await UserGameAccount.findOneAndUpdate(
         {
           user_id: user._id.toString(),
-          platform_name: tx.platform_name
+          platform_name: tx.platform_name,
         },
         {
+          user_id: user._id.toString(),
           username: user.username,
+          platform_id: platformId,
           platform_name: tx.platform_name,
           game_username: gameUsername.trim(),
           game_password: gamePassword.trim(),
           status: 'Active',
-          $inc: { total_loaded: tx.amount },
-          updated_at: new Date()
+          $inc: { total_loaded: txAmount },
+          updated_at: new Date(),
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 
       // Notification
+      const notifyMsg =
+        txAmount > 0
+          ? `Your ${tx.platform_name} account has been loaded with $${txAmount.toFixed(2)}! Login username: ${gameUsername.trim()}`
+          : `Your ${tx.platform_name} game account is ready! Login username: ${gameUsername.trim()}`;
+
       await ChromeNotification.create({
         user_id: tx.user_id,
-        title: 'Game Account Loaded! 🎮',
-        message: `Your ${tx.platform_name} account has been loaded with $${tx.amount.toFixed(2)}! Login username: ${gameUsername.trim()}`,
+        title: txAmount > 0 ? 'Game Account Loaded! 🎮' : 'Game Account Ready! 🎮',
+        message: notifyMsg,
       });
 
       return NextResponse.json({
