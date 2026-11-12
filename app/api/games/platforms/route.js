@@ -3,7 +3,7 @@ import { connectToDatabase, GamePlatform, UserGameAccount, GameTransaction } fro
 import { getSessionFromRequest } from '@/lib/auth';
 import { isFastApiPlatform } from '@/lib/fastapi';
 import { isFireKirinPlatform } from '@/lib/firekirin';
-import { isJuwaExternalPlatform } from '@/lib/juwaExternal';
+import { isJuwaExternalPlatform, isJuwa2Platform } from '@/lib/juwaExternal';
 import { getGameApiProvider, getGameApiProviderLabel, isAutoGamePlatform } from '@/lib/gameProviders';
 
 export const dynamic = 'force-dynamic';
