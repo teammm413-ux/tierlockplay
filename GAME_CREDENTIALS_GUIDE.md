@@ -31,13 +31,35 @@ Orion Star, Panda Master, Ultra Panda, V-Blink, Golden Dragon, Milky Way, and an
 
 ## Deploy on VPS
 
+### Assan tareeqa: purani Agent Vault keys hatao + nayi game credentials lagao
+
+MongoDB / SMTP / RevSol **touch nahi hotay** — sirf game API lines update hoti hain.
+
 ```bash
 cd /var/www/tierlockplay && \
 git pull && \
-bash scripts/sync-env-local.sh && \
-nano .env.local && \
-npm ci && npm run build && \
-pm2 restart tierlockplay
+bash scripts/cleanup-env-local.sh && \
+bash scripts/apply-game-env-from-example.sh && \
+nano .env.local
 ```
+
+`nano` mein sirf check karo:
+
+- `FIREKIRIN_AGENT_PASSWORD=` — apna asli password likho (agar abhi `your_` hai)
+- Baqi game keys `.env.example` se fill ho jani chahiye
+
+Phir live:
+
+```bash
+npm ci && npm run build && pm2 restart tierlockplay
+```
+
+Agar game keys **force** overwrite karni hon (sab `.env.example` jaisi):
+
+```bash
+bash scripts/apply-game-env-from-example.sh --force
+```
+
+Purana backup har script ke baad same folder mein: `.env.local.bak.*`
 
 If Vegas Sweeps or Game Vault API URL differs from distributor docs, only change `VEGAS_SWEEP_BASE_URL` / `GAME_VAULT_BASE_URL` in `.env.local`.
