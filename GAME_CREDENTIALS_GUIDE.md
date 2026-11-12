@@ -23,9 +23,9 @@ Docs folder: `Api_documentation_2/` (Juwa2.0.pdf, Juwa_simple.pdf, Game_Vault.pd
 
 ---
 
-## Manual games (admin panel)
+## Manual games
 
-Orion Star, Panda Master, Ultra Panda, V-Blink, Golden Dragon, Milky Way, and any other title **not** in the table above.
+**None** — manual platforms are removed from MongoDB on app startup. Only the **8 API games** above remain in Admin → Games and on the player Game Platforms page.
 
 ---
 
